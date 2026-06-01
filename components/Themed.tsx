@@ -1,11 +1,11 @@
-/**
- * Learn more about Light and Dark modes:
- * https://docs.expo.io/guides/color-schemes/
- */
-import { Text as DefaultText, View as DefaultView } from 'react-native';
+import {
+    Text as DefaultText,
+    View as DefaultView,
+    type TextProps as DefaultTextProps,
+    type ViewProps as DefaultViewProps,
+} from 'react-native';
 
-import { useColorScheme } from './useColorScheme';
-
+import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
 
 type ThemeProps = {
@@ -13,21 +13,21 @@ type ThemeProps = {
   darkColor?: string;
 };
 
-export type TextProps = ThemeProps & DefaultText['props'];
-export type ViewProps = ThemeProps & DefaultView['props'];
+type TextProps = ThemeProps & DefaultTextProps;
+type ViewProps = ThemeProps & DefaultViewProps;
 
-export function useThemeColor(
+function useThemeColor(
   props: { light?: string; dark?: string },
-  colorName: keyof typeof Colors.light & keyof typeof Colors.dark
+  colorName: keyof typeof Colors.light
 ) {
-  const theme = useColorScheme();
+  const theme: 'light' | 'dark' = useColorScheme() === 'dark' ? 'dark' : 'light';
   const colorFromProps = props[theme];
 
   if (colorFromProps) {
     return colorFromProps;
-  } else {
-    return Colors[theme][colorName];
   }
+
+  return Colors[theme][colorName];
 }
 
 export function Text(props: TextProps) {
@@ -39,7 +39,10 @@ export function Text(props: TextProps) {
 
 export function View(props: ViewProps) {
   const { style, lightColor, darkColor, ...otherProps } = props;
-  const backgroundColor = useThemeColor({ light: lightColor, dark: darkColor }, 'background');
+  const backgroundColor = useThemeColor(
+    { light: lightColor, dark: darkColor },
+    'background'
+  );
 
   return <DefaultView style={[{ backgroundColor }, style]} {...otherProps} />;
 }
