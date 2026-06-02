@@ -61,7 +61,10 @@ export default function Login() {
   const isSubmitting = isLoading || isGoogleLoading;
 
   const errorMessage = useMemo(
-    () => uiError ?? (googleError ? getErrorMessage(googleError) : null) ?? (loginError ? getErrorMessage(loginError) : null),
+    () =>
+      uiError ??
+      (googleError ? getErrorMessage(googleError) : null) ??
+      (loginError ? getErrorMessage(loginError) : null),
     [googleError, loginError, uiError],
   );
 
@@ -108,7 +111,7 @@ export default function Login() {
 
     if (!startUrl) {
       setUiError(
-        "Missing EXPO_PUBLIC_GOOGLE_AUTH_START_URL. Set it to your backend Google auth start endpoint."
+        "Missing EXPO_PUBLIC_GOOGLE_AUTH_START_URL. Set it to your backend Google auth start endpoint.",
       );
       return;
     }
@@ -147,10 +150,11 @@ export default function Login() {
       // 5. Send token to RTK Query endpoint.
       // NOTE: We stripped `router.replace` from here because your useEffect handles the redirect!
       await googleSignIn({ google_token: token as string }).unwrap();
-
     } catch (err) {
       // Extract accurate server error messaging if available, otherwise fall back
-      setUiError(getErrorMessage(err) ?? "Google sign-in failed. Please try again.");
+      setUiError(
+        getErrorMessage(err) ?? "Google sign-in failed. Please try again.",
+      );
     }
   };
 
@@ -236,7 +240,9 @@ export default function Login() {
             )}
           </Pressable>
 
-          {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+          {errorMessage ? (
+            <Text style={styles.errorText}>{errorMessage}</Text>
+          ) : null}
 
           <Pressable>
             <Text style={styles.linkMuted}>Forgot your password?</Text>
@@ -272,7 +278,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   brand: {
-    fontSize: 36,
+    fontSize: 24,
     letterSpacing: 0.8,
     color: "#171b24",
     fontFamily: Platform.select({ ios: "Times New Roman", android: "serif" }),

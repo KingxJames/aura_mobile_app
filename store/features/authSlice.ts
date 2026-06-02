@@ -5,6 +5,7 @@ export type AuthUser = {
   name: string;
   email: string;
   current_grade_level?: string;
+  profile_picture?: string;
 };
 
 type AuthState = {

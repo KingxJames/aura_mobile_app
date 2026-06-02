@@ -1,192 +1,318 @@
-import { Tabs, useRouter } from 'expo-router';
-import { SymbolView } from 'expo-symbols';
-import React from 'react';
-import { Pressable, StyleSheet, Text } from 'react-native';
-import { useLogoutMutation } from '../../store/services/authAPI';
+import { Tabs, useRouter } from "expo-router";
+import { SymbolView } from "expo-symbols";
+import React, { useEffect, useMemo, useState } from "react";
+import { Image, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSelector } from "react-redux";
+import UserDropdownMenu from "../../components/userDropdownMenu/userDropdownMenu";
+import { API_HOST } from "../../store/services/config/api";
+import type { RootState } from "../../store/store";
 
 export default function TabLayout() {
   const router = useRouter();
-  const [logout, { isLoading: isLoggingOut }] = useLogoutMutation();
+  const insets = useSafeAreaInsets();
+  const user = useSelector((state: RootState) => state.auth.user);
+  const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
-  const handleLogout = async () => {
-    try {
-      await logout().unwrap();
-    } catch {
-      // auth state is cleared in logout onQueryStarted finally
-    } finally {
-      router.replace('/login');
+  // Normalize profile_picture into a fully-qualified URI that Image can load.
+  const profileImageUri = useMemo(() => {
+    if (typeof user?.profile_picture !== "string") {
+      return null;
     }
+
+    const trimmed = user.profile_picture.trim();
+    if (!trimmed) {
+      return null;
+    }
+
+    if (trimmed.startsWith("https://") || trimmed.startsWith("http://")) {
+      return trimmed;
+    }
+
+    if (trimmed.startsWith("//")) {
+      return `https:${trimmed}`;
+    }
+
+    if (trimmed.startsWith("/")) {
+      return `${API_HOST}${trimmed}`;
+    }
+
+    return `${API_HOST}/${trimmed}`;
+  }, [user?.profile_picture]);
+
+  const fallbackInitial =
+    user?.name?.trim()?.charAt(0)?.toUpperCase() ||
+    user?.email?.trim()?.charAt(0)?.toUpperCase() ||
+    "U";
+
+  // Reset image-error state whenever the stored profile picture changes.
+  useEffect(() => {
+    setAvatarLoadFailed(false);
+  }, [profileImageUri]);
+
+  const handleToggleUserMenu = () => {
+    setIsUserMenuOpen((prev) => !prev);
+  };
+
+  const closeUserMenu = () => {
+    setIsUserMenuOpen(false);
   };
 
   return (
-    <Tabs
-      screenOptions={{
-        // Premium brand color curation matching your backend design layers
-        tabBarActiveTintColor: '#670086',   // Royal Purple Primary Accent
-        tabBarInactiveTintColor: '#8e8e93', // Balanced Neutral Grey
-        tabBarStyle: styles.tabBar,
-        headerStyle: styles.header,
-        headerTitleAlign: 'center',
-        headerTitleStyle: styles.headerTitle,
-        headerRight: () => (
+    <>
+      <Tabs
+        screenOptions={{
+          tabBarActiveTintColor: "#D79A1B",
+          tabBarInactiveTintColor: "#6E665B",
+          headerTransparent: true,
+          headerBackground: () => <View style={styles.headerBackground} />,
+          tabBarStyle: styles.tabBar,
+          headerStyle: styles.header,
+          headerTitle: "",
+          // Branded left-aligned title to match the classical header style.
+          headerLeft: () => <Text style={styles.headerBrand}>AURA</Text>,
+          headerRight: () => (
+            <View style={styles.headerActions}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.iconCircleButton,
+                  pressed && styles.iconCirclePressed,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel="Theme"
+              >
+                <SymbolView
+                  name={{
+                    ios: "moon",
+                    android: "dark_mode",
+                    web: "dark_mode",
+                  }}
+                  tintColor="#1B1A17"
+                  size={16}
+                />
+              </Pressable>
+
+              <Pressable
+                onPress={handleToggleUserMenu}
+                style={({ pressed }) => [
+                  styles.avatarButton,
+                  pressed && styles.avatarButtonPressed,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel="Profile"
+              >
+                {/* Show profile image when available; fall back to user initial on failure. */}
+                {profileImageUri && !avatarLoadFailed ? (
+                  <Image
+                    source={{ uri: profileImageUri }}
+                    style={styles.avatarImage}
+                    onError={() => setAvatarLoadFailed(true)}
+                  />
+                ) : (
+                  <Text style={styles.avatarText}>{fallbackInitial}</Text>
+                )}
+              </Pressable>
+            </View>
+          ),
+        }}
+      >
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: "Home",
+            tabBarIcon: ({ color }) => (
+              <SymbolView
+                name={{
+                  ios: "house.fill",
+                  android: "home",
+                  web: "home",
+                }}
+                tintColor={color}
+                size={24}
+              />
+            ),
+          }}
+        />
+
+        <Tabs.Screen
+          name="grades"
+          options={{
+            title: "Grades",
+            tabBarIcon: ({ color }) => (
+              <SymbolView
+                name={{
+                  ios: "graduationcap.fill",
+                  android: "school",
+                  web: "school",
+                }}
+                tintColor={color}
+                size={24}
+              />
+            ),
+          }}
+        />
+
+        <Tabs.Screen
+          name="tutor"
+          options={{
+            title: "AI Tutor",
+            tabBarIcon: ({ color }) => (
+              <SymbolView
+                name={{
+                  ios: "waveform.and.mic",
+                  android: "chat",
+                  web: "chat",
+                }}
+                tintColor={color}
+                size={24}
+              />
+            ),
+          }}
+        />
+
+        <Tabs.Screen
+          name="aural"
+          options={{
+            title: "Aural Training",
+            tabBarIcon: ({ color }) => (
+              <SymbolView
+                name={{
+                  ios: "hearingdevice.ear",
+                  android: "hearing",
+                  web: "hearing",
+                }}
+                tintColor={color}
+                size={24}
+              />
+            ),
+          }}
+        />
+
+        <Tabs.Screen
+          name="transcriber"
+          options={{
+            title: "Transcriber",
+            tabBarIcon: ({ color }) => (
+              <SymbolView
+                name={{
+                  ios: "camera.metering.matrix",
+                  android: "photo_camera",
+                  web: "photo_camera",
+                }}
+                tintColor={color}
+                size={24}
+              />
+            ),
+          }}
+        />
+      </Tabs>
+
+      <Modal
+        transparent
+        animationType="fade"
+        visible={isUserMenuOpen}
+        onRequestClose={closeUserMenu}
+      >
+        <Pressable style={styles.menuBackdrop} onPress={closeUserMenu}>
           <Pressable
-            onPress={handleLogout}
-            disabled={isLoggingOut}
-            style={({ pressed }) => [
-              styles.logoutButton,
-              pressed && styles.logoutButtonPressed,
-              isLoggingOut && styles.logoutButtonDisabled,
-            ]}
+            style={[styles.menuContainer, { top: insets.top + 70 }]}
+            onPress={(event) => event.stopPropagation()}
           >
-            <Text style={styles.logoutText}>{isLoggingOut ? '...' : 'Logout'}</Text>
+            <UserDropdownMenu />
           </Pressable>
-        ),
-      }}
-    >
-      {/* TAB 1: HOME (Predictive Analytics & Recommendation Panel) */}
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => (
-            <SymbolView
-              name={{
-                ios: 'house.fill',
-                android: 'home',
-                web: 'home',
-              }}
-              tintColor={color}
-              size={24}
-            />
-          ),
-        }}
-      />
-
-      {/* TAB 2: GRADES (Adaptive Testing Core - MusicTheoryBench Logic) */}
-      <Tabs.Screen
-        name="grades"
-        options={{
-          title: 'Grades',
-          tabBarIcon: ({ color }) => (
-            <SymbolView
-              name={{
-                ios: 'graduationcap.fill',
-                android: 'school',
-                web: 'school',
-              }}
-              tintColor={color}
-              size={24}
-            />
-          ),
-        }}
-      />
-
-      {/* TAB 3: TUTOR (Generative AI Instructor Guardrail Interface) */}
-      <Tabs.Screen
-        name="tutor"
-        options={{
-          title: 'AI Tutor',
-          tabBarIcon: ({ color }) => (
-            <SymbolView
-              name={{
-                ios: 'waveform.and.mic',
-                android: 'chat',
-                web: 'chat',
-              }}
-              tintColor={color}
-              size={24}
-            />
-          ),
-        }}
-      />
-
-      {/* TAB 4: AURAL (Ear Training & Real-Time Pitch Analysis DSP Math) */}
-      <Tabs.Screen
-        name="aural"
-        options={{
-          title: 'Aural Training',
-          tabBarIcon: ({ color }) => (
-            <SymbolView
-              name={{
-                ios: 'hearingdevice.ear',
-                android: 'hearing',
-                web: 'hearing',
-              }}
-              tintColor={color}
-              size={24}
-            />
-          ),
-        }}
-      />
-
-      {/* TAB 5: TRANSCRIBER (Optical Music Recognition Camera Pipeline) */}
-      <Tabs.Screen
-        name="transcriber"
-        options={{
-          title: 'Transcriber',
-          tabBarIcon: ({ color }) => (
-            <SymbolView
-              name={{
-                ios: 'camera.metering.matrix',
-                android: 'photo_camera',
-                web: 'photo_camera',
-              }}
-              tintColor={color}
-              size={24}
-            />
-          ),
-        }}
-      />
-    </Tabs>
+        </Pressable>
+      </Modal>
+    </>
   );
 }
 
-// Separate styling abstractions to optimize screen render efficiency
 const styles = StyleSheet.create({
   tabBar: {
-    backgroundColor: '#ffffff',
-    borderTopColor: '#f2f2f7',
+    backgroundColor: "#F5EFE3",
+    borderTopColor: "#D9CBB6",
     borderTopWidth: 1,
-    height: 64,
+    height: 68,
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
     paddingBottom: 8,
     paddingTop: 6,
-    elevation: 8, // Shadows for clean Android material card depth
-    shadowColor: '#000000', // Shadows for premium iOS feel
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
-  },
-  header: {
-    backgroundColor: '#ffffff',
-    borderBottomColor: '#f2f2f7',
-    borderBottomWidth: 1,
     elevation: 0,
     shadowOpacity: 0,
   },
-  headerTitle: {
-    fontWeight: '700',
-    fontSize: 18,
-    color: '#1c1c1e',
-    letterSpacing: -0.4,
+  header: {
+    elevation: 0,
+    shadowOpacity: 0,
+    height: 86,
   },
-  logoutButton: {
-    marginRight: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
+  headerBackground: {
+    flex: 1,
+    backgroundColor: "#F5EFE3",
+    borderBottomColor: "#D9CBB6",
+    borderBottomWidth: 1,
+  },
+  headerBrand: {
+    marginLeft: 14,
+    fontSize: 30,
+    lineHeight: 34,
+    fontWeight: "800",
+    color: "#1B1A17",
+    letterSpacing: 0.6,
+    fontFamily: "Georgia",
+  },
+  headerActions: {
+    marginRight: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  iconCircleButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#d7d4de',
-    backgroundColor: '#f7f5fb',
+    borderColor: "#CFC5B5",
+    backgroundColor: "#F5EFE3",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  logoutButtonPressed: {
-    opacity: 0.85,
+  iconCirclePressed: {
+    opacity: 0.75,
   },
-  logoutButtonDisabled: {
-    opacity: 0.6,
+  avatarButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#178CCF",
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  logoutText: {
-    color: '#3a2350',
-    fontWeight: '700',
-    fontSize: 12,
+  avatarButtonPressed: {
+    opacity: 0.8,
+  },
+  avatarText: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+    fontSize: 18,
+  },
+  avatarImage: {
+    width: "100%",
+    height: "100%",
+  },
+  menuBackdrop: {
+    flex: 1,
+  },
+  menuContainer: {
+    position: "absolute",
+    right: 14,
+    width: 248,
+    shadowColor: "#000000",
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
   },
 });
