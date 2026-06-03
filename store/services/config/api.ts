@@ -1,9 +1,17 @@
+import { Platform } from "react-native";
+
 // API Configuration
-export const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
+const localhostBase = Platform.select({
+  android: "http://10.0.2.2:8080",
+  ios: "http://localhost:8080",
+  default: "http://localhost:8080",
+});
 
 export const API_HOST =
-  process.env.EXPO_PUBLIC_API_HOST || "http://localhost:8080";
+  process.env.EXPO_PUBLIC_API_HOST || localhostBase || "http://localhost:8080";
+
+export const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_BASE_URL || `${API_HOST}/api`;
 
 // Helper function to build full API URLs
 export const buildApiUrl = (endpoint: string): string => {

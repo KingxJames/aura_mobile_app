@@ -6,6 +6,7 @@ type TutorUiState = {
   isTyping: boolean; // for showing "Aura is typing..."
   autoScrollEnabled: boolean;
   historyLoaded: boolean;
+  currentConversationId: string | null;
 
   // optional local filters/settings
   showOnlyAiMessages: boolean;
@@ -17,6 +18,7 @@ const initialState: TutorUiState = {
   isTyping: false,
   autoScrollEnabled: true,
   historyLoaded: false,
+  currentConversationId: null,
   showOnlyAiMessages: false,
 };
 
@@ -47,6 +49,10 @@ const tutorUiSlice = createSlice({
       state.historyLoaded = action.payload;
     },
 
+    setCurrentConversationId: (state, action: PayloadAction<string | null>) => {
+      state.currentConversationId = action.payload;
+    },
+
     setShowOnlyAiMessages: (state, action: PayloadAction<boolean>) => {
       state.showOnlyAiMessages = action.payload;
     },
@@ -62,6 +68,7 @@ export const {
   setIsTyping,
   setAutoScrollEnabled,
   setHistoryLoaded,
+  setCurrentConversationId,
   setShowOnlyAiMessages,
   resetTutorUi,
 } = tutorUiSlice.actions;
