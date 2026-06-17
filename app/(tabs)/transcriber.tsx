@@ -1,4 +1,5 @@
 import { SymbolView } from "expo-symbols";
+import React, { useState } from "react";
 import {
   Platform,
   Pressable,
@@ -6,79 +7,89 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
+import TranscribeHistoryModal from "./../../components/transcribeHsitory/transcribeHistory";
+import TranscribeHistoryButton from "./../../components/transcribeHsitory/transcribeHistoryButton";
 
 export default function TranscriberScreen() {
   // 1. RESPONSIVE BREAKPOINTS
-  // We grab the screen's current width dynamically. If the user rotates a device 
-  // or runs this on a tablet, these values update automatically.
   const { width } = useWindowDimensions();
-  const isTablet = width >= 768;      // Typically iPads and larger Android tablets
-  const isSmallPhone = width < 390;   // Older/smaller phones like iPhone SE
+  const isTablet = width >= 768;
+  const isSmallPhone = width < 390;
 
-  // 2. LAYOUT PROP CALCULATIONS
-  // Instead of static pixel values, we choose sizing rules based on the device class.
-  // This keeps the UI readable whether on a massive iPad or a cramped mobile screen.
-  const contentHorizontalPadding = isTablet ? 48 : isSmallPhone ? 16 : 24;
-  const topPadding = isTablet ? 128 : isSmallPhone ? 88 : 104;
-  const contentMaxWidth = isTablet ? 760 : 640; // Prevents lines of text from stretching too wide on tablet
+  // 2. STATE MANAGER FOR HISTORY OVERLAY
+  const [historyVisible, setHistoryVisible] = useState(false);
 
-  // 3. TYPOGRAPHY SCALING
-  // Matching font sizes and line heights explicitly ensures text doesn't overlap or look clipped.
-  const titleSize = isTablet ? 44 : isSmallPhone ? 30 : 36;
-  const titleLineHeight = isTablet ? 50 : isSmallPhone ? 34 : 40;
+  // 3. LAYOUT PROP CALCULATIONS
+  const contentHorizontalPadding = isTablet ? 48 : isSmallPhone ? 20 : 28;
+  const topPadding = isTablet ? 140 : isSmallPhone ? 90 : 110;
+  const contentMaxWidth = isTablet ? 800 : 680;
 
-  const subtitleSize = isTablet ? 24 : isSmallPhone ? 16 : 19;
-  const subtitleLineHeight = isTablet ? 32 : isSmallPhone ? 22 : 26;
-
-  const uploadTextSize = isTablet ? 28 : isSmallPhone ? 18 : 22;
-  const uploadTextLineHeight = isTablet ? 34 : isSmallPhone ? 24 : 28;
-
-  // 4. INTERACTIVE CARD DIMENSIONS
-  // The interactive drag/drop zone scale properties.
-  const uploadCardHeight = isTablet ? 136 : isSmallPhone ? 96 : 112;
-  const uploadIconSize = isTablet ? 24 : isSmallPhone ? 18 : 20;
+  // Typography Scaling
+  const titleSize = isTablet ? 42 : isSmallPhone ? 32 : 36;
+  const titleLineHeight = isTablet ? 48 : isSmallPhone ? 36 : 42;
+  const subtitleSize = isTablet ? 20 : isSmallPhone ? 15 : 17;
+  const subtitleLineHeight = isTablet ? 28 : isSmallPhone ? 21 : 24;
+  const actionTextSize = isTablet ? 22 : isSmallPhone ? 16 : 18;
+  const cardHeight = isTablet ? 140 : isSmallPhone ? 90 : 104;
+  const iconSize = isTablet ? 24 : isSmallPhone ? 18 : 20;
 
   return (
-    /* MAIN CONTAINER INTERACTIVE WRAPPER
-       Uses flex: 1 to fill the whole screen. We inject the dynamic 'topPadding' calculated 
-       above directly into the style object so the content avoids the status bar/notches. */
-    <View style={{
-      flex: 1,
-      backgroundColor: "#F5EFE3",
-      alignItems: "center",         // Centers the content view horizontally
-      paddingTop: topPadding,       // Dynamic top spacing based on device size
-    }}>
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: "#FAF6EE",
+        alignItems: "center",
+        paddingTop: topPadding,
+      }}
+    >
+      {/* GLOBAL FLOATING HISTORY BUTTON LAYER */}
+      <View
+        style={{
+          position: "absolute",
+          top: isTablet ? 100 : 100,
+          right: contentHorizontalPadding,
+          zIndex: 10,
+        }}
+      >
+        <TranscribeHistoryButton onPress={() => setHistoryVisible(true)} />
+      </View>
 
-      {/* INNER CONTENT WRAPPER 
-          Restricts the max width on wider screens to keep a clean, editorial layout. */}
+      {/* DYNAMIC HISTORY SIDEBAR PANEL DRAWER OVERLAY */}
+      <TranscribeHistoryModal
+        visible={historyVisible}
+        onClose={() => setHistoryVisible(false)}
+      />
+
+      {/* MAIN VIEW CONTENT CONTAINER */}
       <View
         style={{
           width: "100%",
-          paddingHorizontal: contentHorizontalPadding, // Dynamic spacing for screen edges
-          maxWidth: contentMaxWidth,                   // Constrains tablet horizontal layout stretching
+          paddingHorizontal: contentHorizontalPadding,
+          maxWidth: contentMaxWidth,
         }}
       >
-        {/* KICKER (Small section category label) */}
-        <Text style={{
-          fontSize: 9,
-          lineHeight: 12,
-          letterSpacing: 1.6, // Spaces out the letters for a modern aesthetic
-          fontWeight: "700",
-          color: "#D4A64E",
-          marginBottom: 10,
-        }}>
+        {/* KICKER */}
+        <Text
+          style={{
+            fontSize: 10,
+            lineHeight: 12,
+            letterSpacing: 1.8,
+            fontWeight: "700",
+            color: "#E2A960",
+            marginBottom: 12,
+          }}
+        >
           SHEET READER
         </Text>
 
-        {/* MAIN TITLE 
-            Includes a platform check for font families because Android does not have 'Georgia' installed by default. */}
+        {/* MAIN TITLE */}
         <Text
           style={{
-            color: "#121E31",
-            fontFamily: Platform.OS === "ios" ? "Georgia" : "serif", // iOS uses Georgia, Android falls back cleanly to system serif
-            marginBottom: 8,
-            fontSize: titleSize,          // Dynamic font size
-            lineHeight: titleLineHeight,  // Dynamic line height matched to font size
+            color: "#162538",
+            fontFamily: Platform.OS === "ios" ? "Georgia" : "serif",
+            marginBottom: 12,
+            fontSize: titleSize,
+            lineHeight: titleLineHeight,
           }}
         >
           Hear what you see
@@ -87,70 +98,93 @@ export default function TranscriberScreen() {
         {/* SUBTITLE DESCRIPTION */}
         <Text
           style={{
-            color: "#425772",
-            marginBottom: 18,
-            fontSize: subtitleSize,          // Dynamic font size
-            lineHeight: subtitleLineHeight,  // Dynamic line height
+            color: "#40566D",
+            marginBottom: 36,
+            fontSize: subtitleSize,
+            lineHeight: subtitleLineHeight,
+            fontWeight: "400",
           }}
         >
           Snap or upload a single line of notation. AURA transcribes and plays
           it back.
         </Text>
 
-        {/* UPLOAD CARD PRESSABLE (The interactive button zone)
-            For Pressable, we pass an arrow function to the style prop. This gives us access to 
-            the 'pressed' boolean state managed internally by React Native. */}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Upload sheet music"
-          style={({ pressed }) => ({
-            width: "100%",
-            borderRadius: 16,
-            borderWidth: 2,
-            borderStyle: "dashed",     // Creates a classic dashed drop-zone outline
-            borderColor: "#D4CCBE",
-            alignItems: "center",       // Centers the row elements vertically
-            justifyContent: "center",     // Centers the row elements horizontally
-            backgroundColor: "#F5EFE3",
-            paddingHorizontal: 16,
-            minHeight: uploadCardHeight, // Dynamic card height based on screen size
-
-            // DYNAMIC OPACITY: If the finger is down, set opacity to 0.78 for immediate visual feedback.
-            // When released, it smoothly resets back to 1.
-            opacity: pressed ? 0.78 : 1,
-          })}
-        >
-          {/* CARD INNER ROW
-              Arranges the icon and text text side-by-side. */}
-          <View style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 10, // Places a reliable 10px gap between the icon and text without manual margins
-          }}>
-            {/* VECTOR ICON COMPONENT */}
-            <SymbolView
-              name={{
-                ios: "square.and.arrow.up", // Uses high-fidelity Apple SF Symbols on iOS
-                android: "upload",          // Safe fallback for Material symbols on Android
-                web: "upload",
-              }}
-              tintColor="#4D5B70"
-              size={uploadIconSize}         // Dynamic icon scale calculation
-            />
-
-            {/* BUTTON TEXT */}
-            <Text
-              style={{
-                color: "#364A64",
-                fontSize: uploadTextSize,          // Dynamic label size
-                lineHeight: uploadTextLineHeight,  // Dynamic label line height
-              }}
+        {/* TWO-COLUMN BUTTON ROW */}
+        <View style={{ flexDirection: "row", width: "100%", gap: 14 }}>
+          {/* TAKE PHOTO BUTTON */}
+          <Pressable
+            style={({ pressed }) => ({
+              flex: 1,
+              borderRadius: 18,
+              borderWidth: 1.5,
+              borderStyle: "dashed",
+              borderColor: "#D3C9B9",
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: "#FAF6EE",
+              height: cardHeight,
+              opacity: pressed ? 0.78 : 1,
+            })}
+          >
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
             >
-              Upload sheet music
-            </Text>
-          </View>
-        </Pressable>
+              <SymbolView
+                name={{ ios: "camera", android: "photo_camera", web: "camera" }}
+                tintColor="#54657B"
+                size={iconSize}
+              />
+              <Text
+                style={{
+                  color: "#54657B",
+                  fontSize: actionTextSize,
+                  fontWeight: "500",
+                }}
+              >
+                Take photo
+              </Text>
+            </View>
+          </Pressable>
+
+          {/* UPLOAD BUTTON */}
+          <Pressable
+            style={({ pressed }) => ({
+              flex: 1,
+              borderRadius: 18,
+              borderWidth: 1.5,
+              borderStyle: "dashed",
+              borderColor: "#D3C9B9",
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: "#FAF6EE",
+              height: cardHeight,
+              opacity: pressed ? 0.78 : 1,
+            })}
+          >
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+            >
+              <SymbolView
+                name={{
+                  ios: "square.and.arrow.up",
+                  android: "upload",
+                  web: "upload",
+                }}
+                tintColor="#54657B"
+                size={iconSize}
+              />
+              <Text
+                style={{
+                  color: "#54657B",
+                  fontSize: actionTextSize,
+                  fontWeight: "500",
+                }}
+              >
+                Upload
+              </Text>
+            </View>
+          </Pressable>
+        </View>
       </View>
     </View>
   );
