@@ -1,26 +1,68 @@
-import { SymbolView } from "expo-symbols";
 import React from "react";
 import {
-    Modal,
-    Platform,
-    Pressable,
-    StyleSheet,
-    Text,
-    useWindowDimensions,
-    View,
+  ActivityIndicator,
+  FlatList,
+  Modal,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
 } from "react-native";
+import PlatformIcon from "../platformIcon/platformIcon";
+import { useGetTranscriptionsQuery } from "../../store/services/transcriptionAPI";
+import type { Transcription } from "../../store/services/transcriptionAPI";
 
 interface TranscribeHistoryModalProps {
   visible: boolean;
   onClose: () => void;
+  onSelect: (transcription: Transcription) => void;
 }
 
 export default function TranscribeHistoryModal({
   visible,
   onClose,
+  onSelect,
 }: TranscribeHistoryModalProps) {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
+
+  const { data: transcriptions, isLoading } = useGetTranscriptionsQuery(
+    undefined,
+    { skip: !visible }
+  );
+
+  const renderItem = ({ item }: { item: Transcription }) => {
+    const firstLine = item.generated_abc?.split("\n").find((l) => l.trim()) ?? "Sheet music";
+    const date =
+      item.formatted_date ??
+      new Date(item.created_at).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+
+    return (
+      <Pressable
+        onPress={() => onSelect(item)}
+        style={({ pressed }) => ({
+          paddingVertical: 16,
+          borderBottomWidth: 1,
+          borderBottomColor: "#EAE3D5",
+          opacity: pressed ? 0.65 : 1,
+        })}
+      >
+        <Text
+          style={styles.itemTitle}
+          numberOfLines={1}
+        >
+          {firstLine}
+        </Text>
+        <Text style={styles.itemDate}>{date}</Text>
+      </Pressable>
+    );
+  };
 
   return (
     <Modal
@@ -29,52 +71,58 @@ export default function TranscribeHistoryModal({
       visible={visible}
       onRequestClose={onClose}
     >
-      {/* BACKDROP DIM LAYOUT EDGE CONTAINER */}
       <View style={styles.modalBackdrop}>
-        {/* DISMISS BACKDROP ACTION ZONE */}
+        {/* DISMISS ZONE */}
         <Pressable style={styles.dismissOutsideZone} onPress={onClose} />
 
-        {/* SIDE SHEET PANEL DRAWER BODY */}
+        {/* DRAWER */}
         <View
           style={[
             styles.drawerContentContainer,
             {
-              width: isTablet ? 420 : "90%", // Aligns perfectly to right-hand drawer styles
+              width: isTablet ? 420 : "90%",
               borderLeftWidth: 1,
               borderColor: "#EAE3D5",
             },
           ]}
         >
-          {/* HEADER SECTOR WITH DISMISS BUTTON */}
+          {/* HEADER */}
           <View style={styles.headerWrapperRow}>
             <Text style={styles.panelTitleText}>Past transcriptions</Text>
-
             <Pressable
               onPress={onClose}
               accessibilityRole="button"
               accessibilityLabel="Close history panel"
-              style={({ pressed }) => ({
-                opacity: pressed ? 0.7 : 1,
-              })}
+              style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
             >
-              <SymbolView
-                name={{
-                  ios: "xmark.circle.fill",
-                  android: "cancel",
-                  web: "cancel",
-                }}
-                tintColor="#D9A352" // Gorgeous golden amber color token matching design
+              <PlatformIcon
+                ios="xmark.circle.fill"
+                name="cancel"
+                color="#D9A352"
                 size={28}
               />
             </Pressable>
           </View>
 
-          {/* DYNAMIC LIST CONTENT BODY LAYER (CURRENTLY SHOWING DESIGN EMPTY STATE) */}
-          <View style={styles.listEmptyStateContentContainer}>
-            <Text style={styles.emptyStateMessageText}>
-              No transcriptions yet.
-            </Text>
-          </View>
+          {/* BODY */}
+          {isLoading ? (
+            <View style={styles.centeredBody}>
+              <ActivityIndicator color="#E2A960" />
+            </View>
+          ) : !transcriptions?.length ? (
+            <View style={styles.listEmptyStateContentContainer}>
+              <Text style={styles.emptyStateMessageText}>
+                No transcriptions yet.
+              </Text>
+            </View>
+          ) : (
+            <FlatList
+              data={transcriptions}
+              keyExtractor={(item) => String(item.id)}
+              renderItem={renderItem}
+              showsVerticalScrollIndicator={false}
+            />
+          )}
         </View>
       </View>
     </Modal>
@@ -84,9 +132,9 @@ export default function TranscribeHistoryModal({
 const styles = StyleSheet.create({
   modalBackdrop: {
     flex: 1,
-    backgroundColor: "rgba(18, 30, 49, 0.12)", // Elegant soft transparent background dimming overlay
+    backgroundColor: "rgba(18, 30, 49, 0.12)",
     flexDirection: "row",
-    justifyContent: "flex-end", // Shifts sidebar layout strictly to the right side
+    justifyContent: "flex-end",
   },
   dismissOutsideZone: {
     position: "absolute",
@@ -98,7 +146,7 @@ const styles = StyleSheet.create({
   },
   drawerContentContainer: {
     height: "100%",
-    backgroundColor: "#FAF6EE", // Perfect warm cream tone color matching historical view sheet
+    backgroundColor: "#FAF6EE",
     paddingTop: Platform.OS === "ios" ? 64 : 44,
     paddingHorizontal: 24,
     shadowColor: "#000",
@@ -119,14 +167,29 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === "ios" ? "Georgia" : "serif",
     fontWeight: "400",
   },
+  centeredBody: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   listEmptyStateContentContainer: {
     flex: 1,
-    alignItems: "flex-start", // Matches text alignment logic directly to historical reference images
+    alignItems: "flex-start",
     paddingTop: 12,
   },
   emptyStateMessageText: {
     fontSize: 15,
-    color: "#54657B", // Soft steel gray font
+    color: "#54657B",
     fontWeight: "400",
+  },
+  itemTitle: {
+    color: "#162538",
+    fontSize: 14,
+    fontWeight: "500",
+    marginBottom: 4,
+  },
+  itemDate: {
+    color: "#54657B",
+    fontSize: 12,
   },
 });

@@ -1,6 +1,6 @@
-import { SymbolView } from "expo-symbols";
 import React from "react";
 import { Pressable, StyleSheet, Text, useWindowDimensions } from "react-native";
+import PlatformIcon from "../platformIcon/platformIcon";
 
 interface TranscribeHistoryButtonProps {
   onPress?: () => void;
@@ -29,13 +29,10 @@ export default function TranscribeHistoryButton({
       ]}
     >
       {/* HISTORY VECTOR ICON */}
-      <SymbolView
-        name={{
-          ios: "clock.arrow.circlepath",
-          android: "history",
-          web: "history",
-        }}
-        tintColor="#1E293B" // Deep charcoal matching the icon outline
+      <PlatformIcon
+        ios="clock.arrow.circlepath"
+        name="history"
+        color="#1E293B" // Deep charcoal matching the icon outline
         size={isTablet ? 18 : 15}
       />
 

@@ -1,12 +1,17 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import type { Transcription } from "../services/transcriptionAPI";
 
 interface TranscriptionState {
-  currentScore: string | null; // Holds the active ABC notation string being played
-  isAudioPlaying: boolean; // Tracks audio player loop state
+  activeTranscription: Transcription | null;
+  currentScore: string | null;
+  currentMidi: string | null;
+  isAudioPlaying: boolean;
 }
 
 const initialState: TranscriptionState = {
+  activeTranscription: null,
   currentScore: null,
+  currentMidi: null,
   isAudioPlaying: false,
 };
 
@@ -14,21 +19,26 @@ export const transcriptionSlice = createSlice({
   name: "transcription",
   initialState,
   reducers: {
-    // Sets the active score returned from your Laravel upload action
-    setActiveScore: (state, action: PayloadAction<string | null>) => {
-      state.currentScore = action.payload;
+    setActiveTranscription: (state, action: PayloadAction<Transcription | null>) => {
+      state.activeTranscription = action.payload;
+      state.currentScore = action.payload?.generated_abc ?? null;
+      state.currentMidi = action.payload?.generated_midi ?? null;
     },
-    // Simple state controls for your playback player UI
     setAudioPlaying: (state, action: PayloadAction<boolean>) => {
       state.isAudioPlaying = action.payload;
     },
     resetPlayback: (state) => {
+      state.activeTranscription = null;
       state.currentScore = null;
+      state.currentMidi = null;
       state.isAudioPlaying = false;
+    },
+    setActiveScore: (state, action: PayloadAction<string | null>) => {
+      state.currentScore = action.payload;
     },
   },
 });
 
-export const { setActiveScore, setAudioPlaying, resetPlayback } =
+export const { setActiveTranscription, setAudioPlaying, resetPlayback, setActiveScore } =
   transcriptionSlice.actions;
 export default transcriptionSlice.reducer;
