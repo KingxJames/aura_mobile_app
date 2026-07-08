@@ -17,6 +17,8 @@ export default function RootLayout() {
               options={{ headerShown: false }}
             />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="grade/[id]" options={{ headerShown: false }} />
+            <Stack.Screen name="quiz/[id]" options={{ headerShown: false }} />
             <Stack.Screen name="notFound" options={{ headerShown: false }} />
           </Stack>
         </ThemeProvider>

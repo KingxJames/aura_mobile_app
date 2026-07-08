@@ -16,13 +16,19 @@ export type Grade = {
   quizzes: Quiz[];
 };
 
+// Raw shape of each entry in a quiz's content_jsonb question bank.
 export type QuizQuestion = {
-  question_id: string;
-  type: string;
-  prompt: string;
+  id: number;
+  question: string;
   options: string[];
-  difficulty?: "standard" | "advanced";
-  correct_answer?: string; // backend may include on full quiz fetch
+  ground_truth: string;
+  hint?: string;
+  explanation?: string;
+  metadata?: {
+    topic?: string;
+    image_url?: string;
+    difficulty?: number;
+  };
 };
 
 export type Quiz = {
@@ -51,9 +57,30 @@ export type DashboardRecommendation = {
   recommendation: string;
 };
 
+export type AuraNoteResponse = {
+  success: boolean;
+  message: string;
+};
+
+export type TopicDebriefBody = {
+  quiz_id: number;
+  topic: string;
+  correct_count: number;
+  total_questions: number;
+  current_streak: number;
+  tier: "standard" | "advanced";
+};
+
+export type TopicHelpBody = {
+  quiz_id: number;
+  topic: string;
+  attempts: number;
+  best_score_percent: number;
+};
+
 type SubmitQuizBody = {
-  quiz_id: string;
-  question_id: string;
+  quiz_id: number;
+  question_id: number;
   user_answer: string;
 };
 
@@ -65,9 +92,10 @@ type SubmitQuizApiResponse = {
   allocated_tier: "standard" | "advanced";
   message: string;
   next_question: {
-    question_id: string;
+    question_id: number;
     type: string;
     prompt: string;
+    hint?: string | null;
     options: string[];
   };
 };
@@ -80,12 +108,13 @@ export type SubmitQuizResponse = {
   allocatedTier: "standard" | "advanced";
   message: string;
   nextQuestion: {
-    questionId: string;
+    questionId: number;
     type: string;
     prompt: string;
+    hint: string | null;
     options: string[];
   } | null;
-  nextQuestionId: string | null;
+  nextQuestionId: number | null;
 };
 
 export const curriculumApi = baseAPI.injectEndpoints({
@@ -120,6 +149,7 @@ export const curriculumApi = baseAPI.injectEndpoints({
               questionId: res.next_question.question_id,
               type: res.next_question.type,
               prompt: res.next_question.prompt,
+              hint: res.next_question.hint ?? null,
               options: res.next_question.options,
             }
           : null;
@@ -136,7 +166,7 @@ export const curriculumApi = baseAPI.injectEndpoints({
         };
       },
       invalidatesTags: (result, error, body) => [
-        { type: "Quiz", id: body.quiz_id },
+        { type: "Quiz", id: String(body.quiz_id) },
         { type: "Progress", id: "LIST" },
         { type: "Recommendations", id: "ME" },
       ],
@@ -173,6 +203,22 @@ export const curriculumApi = baseAPI.injectEndpoints({
       query: () => "/v1/curriculum/dashboard-recommendations",
       providesTags: [{ type: "Recommendations", id: "ME" }],
     }),
+
+    getTopicDebrief: build.mutation<AuraNoteResponse, TopicDebriefBody>({
+      query: (body) => ({
+        url: "/v1/curriculum/topic-debrief",
+        method: "POST",
+        body,
+      }),
+    }),
+
+    getTopicHelp: build.mutation<AuraNoteResponse, TopicHelpBody>({
+      query: (body) => ({
+        url: "/v1/curriculum/topic-help",
+        method: "POST",
+        body,
+      }),
+    }),
   }),
   overrideExisting: false,
 });
@@ -184,4 +230,6 @@ export const {
   useGetStudentProgressQuery,
   useDeleteProgressRecordMutation,
   useGetDashboardRecommendationsQuery,
+  useGetTopicDebriefMutation,
+  useGetTopicHelpMutation,
 } = curriculumApi;
