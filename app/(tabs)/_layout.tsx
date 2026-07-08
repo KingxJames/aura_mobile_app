@@ -1,19 +1,45 @@
-import { Tabs, useRouter } from "expo-router";
-import { SymbolView } from "expo-symbols";
+import { Tabs } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
-import { Image, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Image,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSelector } from "react-redux";
+import PlatformIcon from "../../components/platformIcon/platformIcon";
 import UserDropdownMenu from "../../components/userDropdownMenu/userDropdownMenu";
 import { API_HOST } from "../../store/services/config/api";
 import type { RootState } from "../../store/store";
 
+export const unstable_settings = {
+  initialRouteName: "grades",
+};
+
 export default function TabLayout() {
-  const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   const user = useSelector((state: RootState) => state.auth.user);
   const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+
+  const isTablet = width >= 768;
+  const isNarrowPhone = width < 390;
+  const contentMaxWidth = 680;
+  const contentSideInset =
+    width > contentMaxWidth ? Math.max(14, (width - contentMaxWidth) / 2) : 14;
+  const headerHeight = isTablet ? 96 : 86;
+  const actionButtonSize = isTablet ? 44 : 40;
+  const actionIconSize = isTablet ? 18 : 16;
+  const avatarTextSize = isTablet ? 20 : 18;
+  const tabIconSize = isTablet ? 20 : 18;
+  const brandSize = isTablet ? 34 : isNarrowPhone ? 26 : 30;
+  const brandLineHeight = isTablet ? 38 : isNarrowPhone ? 30 : 34;
+  const tabBarBottomPadding = Math.max(insets.bottom, isTablet ? 12 : 8);
 
   // Normalize profile_picture into a fully-qualified URI that Image can load.
   const profileImageUri = useMemo(() => {
@@ -64,39 +90,60 @@ export default function TabLayout() {
       <Tabs
         screenOptions={{
           tabBarActiveTintColor: "#D79A1B",
-          tabBarInactiveTintColor: "#6E665B",
+          tabBarInactiveTintColor: "#415067",
+          tabBarShowLabel: true,
+          tabBarLabelStyle: styles.tabBarLabel,
+          tabBarItemStyle: styles.tabBarItem,
+          tabBarActiveBackgroundColor: "#101E2F",
           headerTransparent: true,
-          headerBackground: () => <View style={styles.headerBackground} />,
-          tabBarStyle: styles.tabBar,
-          headerStyle: styles.header,
+          headerBackground: () => (
+            <View style={styles.headerBackground}>
+              <View
+                style={[
+                  styles.headerBackgroundInner,
+                  {
+                    marginHorizontal: contentSideInset,
+                  },
+                ]}
+              />
+            </View>
+          ),
+          tabBarStyle: [
+            styles.tabBar,
+            isTablet && styles.tabBarTablet,
+            { paddingBottom: tabBarBottomPadding },
+          ],
+          sceneStyle: styles.scene,
+          headerStyle: [styles.header, { height: headerHeight }],
           headerTitle: "",
           // Branded left-aligned title to match the classical header style.
-          headerLeft: () => <Text style={styles.headerBrand}>AURA</Text>,
+          headerLeft: () => (
+            <Text
+              style={[
+                styles.headerBrand,
+                {
+                  marginLeft: contentSideInset,
+                  fontSize: brandSize,
+                  lineHeight: brandLineHeight,
+                },
+              ]}
+            >
+              AURA
+            </Text>
+          ),
           headerRight: () => (
-            <View style={styles.headerActions}>
-              <Pressable
-                style={({ pressed }) => [
-                  styles.iconCircleButton,
-                  pressed && styles.iconCirclePressed,
-                ]}
-                accessibilityRole="button"
-                accessibilityLabel="Theme"
-              >
-                <SymbolView
-                  name={{
-                    ios: "moon",
-                    android: "dark_mode",
-                    web: "dark_mode",
-                  }}
-                  tintColor="#1B1A17"
-                  size={16}
-                />
-              </Pressable>
-
+            <View
+              style={[styles.headerActions, { marginRight: contentSideInset }]}
+            >
               <Pressable
                 onPress={handleToggleUserMenu}
                 style={({ pressed }) => [
                   styles.avatarButton,
+                  {
+                    width: actionButtonSize,
+                    height: actionButtonSize,
+                    borderRadius: actionButtonSize / 2,
+                  },
                   pressed && styles.avatarButtonPressed,
                 ]}
                 accessibilityRole="button"
@@ -110,7 +157,11 @@ export default function TabLayout() {
                     onError={() => setAvatarLoadFailed(true)}
                   />
                 ) : (
-                  <Text style={styles.avatarText}>{fallbackInitial}</Text>
+                  <Text
+                    style={[styles.avatarText, { fontSize: avatarTextSize }]}
+                  >
+                    {fallbackInitial}
+                  </Text>
                 )}
               </Pressable>
             </View>
@@ -118,36 +169,16 @@ export default function TabLayout() {
         }}
       >
         <Tabs.Screen
-          name="index"
-          options={{
-            title: "Home",
-            tabBarIcon: ({ color }) => (
-              <SymbolView
-                name={{
-                  ios: "house.fill",
-                  android: "home",
-                  web: "home",
-                }}
-                tintColor={color}
-                size={24}
-              />
-            ),
-          }}
-        />
-
-        <Tabs.Screen
           name="grades"
           options={{
             title: "Grades",
+            tabBarLabel: "Grades",
             tabBarIcon: ({ color }) => (
-              <SymbolView
-                name={{
-                  ios: "graduationcap.fill",
-                  android: "school",
-                  web: "school",
-                }}
-                tintColor={color}
-                size={24}
+              <PlatformIcon
+                ios="graduationcap.fill"
+                name="school"
+                color={color}
+                size={tabIconSize}
               />
             ),
           }}
@@ -157,15 +188,13 @@ export default function TabLayout() {
           name="tutor"
           options={{
             title: "AI Tutor",
+            tabBarLabel: "Tutor",
             tabBarIcon: ({ color }) => (
-              <SymbolView
-                name={{
-                  ios: "waveform.and.mic",
-                  android: "chat",
-                  web: "chat",
-                }}
-                tintColor={color}
-                size={24}
+              <PlatformIcon
+                ios="waveform.and.mic"
+                name="chat"
+                color={color}
+                size={tabIconSize}
               />
             ),
           }}
@@ -175,15 +204,13 @@ export default function TabLayout() {
           name="aural"
           options={{
             title: "Aural Training",
+            tabBarLabel: "Aural",
             tabBarIcon: ({ color }) => (
-              <SymbolView
-                name={{
-                  ios: "hearingdevice.ear",
-                  android: "hearing",
-                  web: "hearing",
-                }}
-                tintColor={color}
-                size={24}
+              <PlatformIcon
+                ios="hearingdevice.ear"
+                name="hearing"
+                color={color}
+                size={tabIconSize}
               />
             ),
           }}
@@ -193,15 +220,13 @@ export default function TabLayout() {
           name="transcriber"
           options={{
             title: "Transcriber",
+            tabBarLabel: "Reader",
             tabBarIcon: ({ color }) => (
-              <SymbolView
-                name={{
-                  ios: "camera.metering.matrix",
-                  android: "photo_camera",
-                  web: "photo_camera",
-                }}
-                tintColor={color}
-                size={24}
+              <PlatformIcon
+                ios="camera.metering.matrix"
+                name="photo-camera"
+                color={color}
+                size={tabIconSize}
               />
             ),
           }}
@@ -216,7 +241,14 @@ export default function TabLayout() {
       >
         <Pressable style={styles.menuBackdrop} onPress={closeUserMenu}>
           <Pressable
-            style={[styles.menuContainer, { top: insets.top + 70 }]}
+            style={[
+              styles.menuContainer,
+              {
+                top: insets.top + (isTablet ? 74 : 70),
+                right: contentSideInset,
+                width: isTablet ? 276 : 248,
+              },
+            ]}
             onPress={(event) => event.stopPropagation()}
           >
             <UserDropdownMenu />
@@ -229,18 +261,36 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
   tabBar: {
-    backgroundColor: "#F5EFE3",
+    backgroundColor: "#EFE6D7",
     borderTopColor: "#D9CBB6",
     borderTopWidth: 1,
-    height: 68,
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingBottom: 8,
+    height: 64,
     paddingTop: 6,
-    elevation: 0,
-    shadowOpacity: 0,
+    elevation: 8,
+    shadowColor: "#6C5B42",
+    shadowOpacity: 0.16,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: -2 },
+  },
+  tabBarTablet: {
+    height: 72,
+    paddingTop: 8,
+  },
+  scene: {
+    backgroundColor: "#F5EFE3",
+  },
+  tabBarItem: {
+    marginHorizontal: 4,
+    marginVertical: 6,
+    borderRadius: 16,
+    justifyContent: "center",
+  },
+  tabBarLabel: {
+    fontSize: 11,
+    lineHeight: 13,
+    fontWeight: "700",
+    marginTop: 2,
+    letterSpacing: 0.2,
   },
   header: {
     elevation: 0,
@@ -250,8 +300,11 @@ const styles = StyleSheet.create({
   headerBackground: {
     flex: 1,
     backgroundColor: "#F5EFE3",
-    borderBottomColor: "#D9CBB6",
-    borderBottomWidth: 1,
+    justifyContent: "flex-end",
+  },
+  headerBackgroundInner: {
+    height: 1,
+    backgroundColor: "#D9CBB6",
   },
   headerBrand: {
     marginLeft: 14,
@@ -307,7 +360,6 @@ const styles = StyleSheet.create({
   },
   menuContainer: {
     position: "absolute",
-    right: 14,
     width: 248,
     shadowColor: "#000000",
     shadowOpacity: 0.08,

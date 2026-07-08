@@ -3,21 +3,19 @@ import { SymbolView } from "expo-symbols";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSelector } from "react-redux";
+import PlatformIcon from "../platformIcon/platformIcon";
 import { useLogoutMutation } from "../../store/services/authAPI";
 import type { RootState } from "../../store/store";
 
 type MenuRowProps = {
   label: string;
-  icon: {
-    ios: string;
-    android: string;
-    web: string;
-  };
+  ios: React.ComponentProps<typeof SymbolView>["name"];
+  name: React.ComponentProps<typeof PlatformIcon>["name"];
   onPress?: () => void;
   disabled?: boolean;
 };
 
-function MenuRow({ label, icon, onPress, disabled }: MenuRowProps) {
+function MenuRow({ label, ios, name, onPress, disabled }: MenuRowProps) {
   return (
     <Pressable
       onPress={onPress}
@@ -27,7 +25,7 @@ function MenuRow({ label, icon, onPress, disabled }: MenuRowProps) {
         pressed && styles.menuRowPressed,
       ]}
     >
-      <SymbolView name={icon as any} size={16} tintColor="#1f1f1f" />
+      <PlatformIcon ios={ios} name={name} color="#1f1f1f" size={16} />
       <Text style={styles.menuLabel}>{label}</Text>
     </Pressable>
   );
@@ -60,33 +58,16 @@ export default function UserDropdownMenu() {
 
       <View style={styles.separator} />
 
-      <MenuRow
-        label="View profile"
-        icon={{
-          ios: "person",
-          android: "person",
-          web: "person",
-        }}
-      />
+      <MenuRow label="View profile" ios="person" name="person" />
 
-      <MenuRow
-        label="Settings"
-        icon={{
-          ios: "gearshape",
-          android: "settings",
-          web: "settings",
-        }}
-      />
+      <MenuRow label="Settings" ios="gearshape" name="settings" />
 
       <View style={styles.separator} />
 
       <MenuRow
         label={isLoggingOut ? "Signing out..." : "Sign out"}
-        icon={{
-          ios: "rectangle.portrait.and.arrow.right",
-          android: "logout",
-          web: "logout",
-        }}
+        ios="rectangle.portrait.and.arrow.right"
+        name="logout"
         onPress={handleLogout}
         disabled={isLoggingOut}
       />

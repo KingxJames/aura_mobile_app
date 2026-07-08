@@ -7,9 +7,11 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   Text,
   TextInput,
   View,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useSelector } from "react-redux";
@@ -47,6 +49,9 @@ function getErrorMessage(error: unknown): string {
 
 export default function Login() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const isTablet = width >= 768;
+  const isSmallPhone = width < 360;
   const [login, { isLoading, error: loginError }] = useLoginMutation();
   const [googleSignIn, { isLoading: isGoogleLoading, error: googleError }] =
     useGoogleSignInMutation();
@@ -69,7 +74,7 @@ export default function Login() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      router.replace("/(tabs)");
+      router.replace("/(tabs)/grades");
     }
   }, [isAuthenticated, router]);
 
@@ -90,7 +95,7 @@ export default function Login() {
         return;
       }
 
-      router.replace("/(tabs)");
+      router.replace("/(tabs)/grades");
     } catch {
       // handled by loginError render state
     }
@@ -199,7 +204,14 @@ export default function Login() {
         </View>
 
         {/* Card Container */}
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ flexGrow: 1, alignItems: "center", paddingBottom: 24 }}
+          keyboardShouldPersistTaps="handled"
+        >
         <View style={{
+          width: "100%",
+          maxWidth: isTablet ? 480 : undefined,
           marginTop: 22,
           marginHorizontal: 16,
           borderRadius: 16,
@@ -214,12 +226,17 @@ export default function Login() {
           </Text>
           <Text style={{
             color: "#0f1f36",
-            fontSize: 48,
-            lineHeight: 52,
+            fontSize: isSmallPhone ? 34 : isTablet ? 48 : 42,
+            lineHeight: isSmallPhone ? 38 : isTablet ? 54 : 46,
             fontFamily: Platform.select({ ios: "Times New Roman", android: "serif" }),
             marginBottom: 8,
           }}>Welcome back.</Text>
-          <Text style={{ color: "#263247", fontSize: 31, lineHeight: 36, marginBottom: 22 }}>
+          <Text style={{
+            color: "#263247",
+            fontSize: isSmallPhone ? 14 : isTablet ? 18 : 16,
+            lineHeight: isSmallPhone ? 20 : isTablet ? 26 : 22,
+            marginBottom: 22,
+          }}>
             Sign in to save progress and pick up where you left off.
           </Text>
 
@@ -271,7 +288,7 @@ export default function Login() {
               paddingHorizontal: 14,
               paddingVertical: 12,
               color: "#111827",
-              fontSize: 22,
+              fontSize: 16,
               marginBottom: 14,
             }}
             value={email}
@@ -291,7 +308,7 @@ export default function Login() {
               paddingHorizontal: 14,
               paddingVertical: 12,
               color: "#111827",
-              fontSize: 22,
+              fontSize: 16,
               marginBottom: 14,
             }}
             value={password}
@@ -313,7 +330,7 @@ export default function Login() {
             {isSubmitting ? (
               <ActivityIndicator color="#ffffff" />
             ) : (
-              <Text style={{ color: "#ffffff", fontSize: 27, fontWeight: "700" }}>Sign in</Text>
+              <Text style={{ color: "#ffffff", fontSize: 17, fontWeight: "700" }}>Sign in</Text>
             )}
           </Pressable>
 
@@ -337,6 +354,7 @@ export default function Login() {
             </Text>
           </Pressable>
         </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

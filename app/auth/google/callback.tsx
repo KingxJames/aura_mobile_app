@@ -52,7 +52,7 @@ export default function GoogleAuthCallbackScreen() {
       try {
         await googleSignIn({ google_token: token }).unwrap();
         if (!active) return;
-        router.replace("/(tabs)");
+        router.replace("/(tabs)/grades");
       } catch (error) {
         if (!active) return;
         const message =

@@ -5,10 +5,12 @@ import {
     KeyboardAvoidingView,
     Platform,
     Pressable,
+    ScrollView,
     StyleSheet,
     Text,
     TextInput,
     View,
+    useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRegisterMutation } from "../store/services/authAPI";
@@ -36,6 +38,8 @@ function getErrorMessage(error: unknown): string {
 
 export default function Register() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const isTablet = width >= 768;
   const [register, { isLoading, error: registerError }] = useRegisterMutation();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -67,7 +71,7 @@ export default function Register() {
         return;
       }
 
-      router.replace("/(tabs)");
+      router.replace("/(tabs)/grades");
     } catch {
       // handled by registerError render state
     }
@@ -86,7 +90,12 @@ export default function Register() {
           </Pressable>
         </View>
 
-        <View style={styles.card}>
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+        <View style={[styles.card, isTablet && styles.cardTablet]}>
           <Text style={styles.kicker}>CONSERVATORY</Text>
           <Text style={styles.heading}>Create account.</Text>
           <Text style={styles.subtitle}>
@@ -150,6 +159,7 @@ export default function Register() {
             </Text>
           </Pressable>
         </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -193,7 +203,16 @@ const styles = StyleSheet.create({
     color: "#111827",
     fontSize: 14,
   },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    alignItems: "center",
+    paddingBottom: 24,
+  },
   card: {
+    width: "100%",
     marginTop: 22,
     marginHorizontal: 16,
     borderRadius: 16,
@@ -202,6 +221,9 @@ const styles = StyleSheet.create({
     borderColor: "#ddd6c8",
     paddingHorizontal: 18,
     paddingVertical: 20,
+  },
+  cardTablet: {
+    maxWidth: 480,
   },
   kicker: {
     fontSize: 11,

@@ -12,7 +12,7 @@ export default function RootIndex() {
   );
 
   useEffect(() => {
-    router.replace(isAuthenticated ? "/(tabs)" : "/login");
+    router.replace(isAuthenticated ? "/(tabs)/grades" : "/login");
   }, [isAuthenticated, router]);
 
   return (
