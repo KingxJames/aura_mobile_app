@@ -1,6 +1,6 @@
-import { SymbolView } from "expo-symbols";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import PlatformIcon from "../platformIcon/platformIcon";
 
 type ChatHistoryButtonProps = {
   onHistoryPress?: () => void;
@@ -22,13 +22,10 @@ export default function ChatHistoryButton({
         accessibilityRole="button"
         accessibilityLabel="History"
       >
-        <SymbolView
-          name={{
-            ios: "clock.arrow.trianglehead.counterclockwise.rotate.90",
-            android: "history",
-            web: "history",
-          }}
-          tintColor="#32302A"
+        <PlatformIcon
+          ios="clock.arrow.trianglehead.counterclockwise.rotate.90"
+          name="history"
+          color="#32302A"
           size={14}
         />
         <Text style={styles.buttonText}>HISTORY</Text>

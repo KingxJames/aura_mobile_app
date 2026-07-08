@@ -1,16 +1,21 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Dimensions,
-  FlatList,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    FlatList,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    Pressable,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import Markdown from "react-native-markdown-display";
+import Animated, { FadeInUp } from "react-native-reanimated";
 import ChatHistoryButton from "./../../components/chatHistory/chatHistoryButton";
 
 // 💡 IMPORT YOUR NEW CHAT HISTORY PANEL COMPONENT
@@ -18,20 +23,66 @@ import ChatHistory from "./../../components/chatHistory/chatHistory";
 
 // Import hooks generated from your tutorApi file
 import {
-  useDeleteConversationMutation,
-  useGetTutorConversationsQuery,
-  useGetTutorHistoryQuery,
-  useSendTutorMessageMutation,
+    useDeleteConversationMutation,
+    useGetTutorConversationsQuery,
+    useGetTutorHistoryQuery,
+    useSendTutorMessageMutation,
 } from "./../../store/services/tutorAPI";
 
 const USER_ID = 1;
 const STORAGE_KEY = "@aura_active_conversation_id";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
+type PendingExchange = {
+  user: string;
+  assistant: string | null;
+};
+
+const TUTOR_MESSAGE_WRAPPER = {
+  start: "<aura_tutor_instructions>",
+  end: "</aura_tutor_instructions>",
+  questionStart: "<student_question>",
+  questionEnd: "</student_question>",
+} as const;
+
+const buildTutorMessage = (studentQuestion: string) => {
+  const systemInstruction = [
+    "You are AURA, a supportive music tutor.",
+    "Answer the student's latest question directly in your first sentence.",
+    "Do not add identity disclaimers or talk about being an AI unless explicitly asked.",
+    "When the question asks what to learn next, provide a concrete practice plan with clear steps.",
+    "Keep responses clear, practical, and focused on music learning.",
+  ].join(" ");
+
+  return [
+    TUTOR_MESSAGE_WRAPPER.start,
+    systemInstruction,
+    TUTOR_MESSAGE_WRAPPER.end,
+    TUTOR_MESSAGE_WRAPPER.questionStart,
+    studentQuestion,
+    TUTOR_MESSAGE_WRAPPER.questionEnd,
+  ].join("\n");
+};
+
+const extractStudentQuestion = (message: string) => {
+  const startToken = TUTOR_MESSAGE_WRAPPER.questionStart;
+  const endToken = TUTOR_MESSAGE_WRAPPER.questionEnd;
+  const start = message.indexOf(startToken);
+  const end = message.indexOf(endToken);
+
+  if (start === -1 || end === -1 || end <= start) {
+    return message;
+  }
+
+  return message.slice(start + startToken.length, end).trim();
+};
+
 export default function TutorScreen() {
   const [inputText, setInputText] = useState("");
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [isStorageLoading, setIsStorageLoading] = useState(true);
+  const [pendingExchange, setPendingExchange] =
+    useState<PendingExchange | null>(null);
 
   // 💡 STATE CONTROLS FOR SIDEBAR OVERLAY
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -100,6 +151,7 @@ export default function TutorScreen() {
 
     // 2. Clear out any text left over in the user input bar
     setInputText("");
+    setPendingExchange(null);
 
     // 3. Close the history panel drawer so the user sees the fresh screen
     setIsHistoryOpen(false);
@@ -111,6 +163,7 @@ export default function TutorScreen() {
 
   const handleSelectConversation = (id: string) => {
     updateConversationId(id);
+    setPendingExchange(null);
     setIsHistoryOpen(false); // Close sidebar view when thread selected
   };
 
@@ -132,247 +185,272 @@ export default function TutorScreen() {
     if (inputText.trim().length === 0 || isSending) return;
 
     const userMessage = inputText.trim();
+    const wrappedUserMessage = buildTutorMessage(userMessage);
     setInputText("");
+    // Show the user's message immediately, followed by a "thinking" bubble,
+    // instead of waiting for the whole round trip before anything appears.
+    setPendingExchange({ user: userMessage, assistant: null });
 
     try {
       const payload = await sendTutorMessage({
         user_id: USER_ID,
-        message: userMessage,
+        message: wrappedUserMessage,
         ...(conversationId && { conversation_id: conversationId }),
       }).unwrap();
 
       if (payload.success) {
+        setPendingExchange({ user: userMessage, assistant: payload.response });
         await updateConversationId(payload.conversation_id);
       }
     } catch (error: any) {
       console.error("RTK Query Chat Dispatch Error:", error);
+      setPendingExchange(null);
+      setInputText(userMessage);
+      Alert.alert("Error", "Couldn't send your message. Please try again.");
     }
   };
 
   const welcomeMessage =
     "Welcome to AURA. Ask me anything about music theory — intervals, key signatures, rhythm — or pick a lesson from the curriculum and we'll work through it together.";
 
+  // Once the invalidated history query refetches and already contains our
+  // optimistic exchange, drop the local copies so nothing renders twice.
+  const lastHistoryItem = historyLogs[historyLogs.length - 1];
+  const pendingSynced =
+    !!pendingExchange?.assistant &&
+    lastHistoryItem?.content === pendingExchange.assistant &&
+    lastHistoryItem?.message_type === "ai";
+
+  const pendingItems =
+    pendingExchange && !pendingSynced
+      ? [
+          {
+            id: "pending-user",
+            message_type: "user",
+            content: pendingExchange.user,
+          },
+          pendingExchange.assistant
+            ? {
+                id: "pending-assistant",
+                message_type: "ai",
+                content: pendingExchange.assistant,
+              }
+            : { id: "pending-typing", message_type: "ai", content: null },
+        ]
+      : [];
+
   const chatFeedData = [
     { id: "welcome-card", role: "assistant", content: welcomeMessage },
     ...historyLogs,
+    ...pendingItems,
   ];
 
   const showSpinner = isStorageLoading || isHistoryLoading;
 
   return (
     <View style={{ flex: 1, backgroundColor: "#F4EFE6" }}>
-      {/* MAIN CONVERSATION SCREEN CONTAINER */}
-      <View
-        style={{
-          flex: 1,
-          paddingTop: 100,
-          paddingHorizontal: 24,
-        }}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 100 : 0}
       >
-        {/* ACTION CONTROLS */}
-        <View style={{ width: "100%", marginBottom: 20 }}>
-          <ChatHistoryButton
-            onHistoryPress={handleHistoryPress}
-            onNewPress={handleNewPress}
-          />
-        </View>
-
-        {/* CHAT DISPLAY ASSISTANT CONTAINER */}
+        {/* MAIN CONVERSATION SCREEN CONTAINER */}
         <View
           style={{
             flex: 1,
-            marginBottom: 160,
-            width: "100%",
-            maxWidth: 680,
-            backgroundColor: "transparent",
-            borderColor: "#CBC2B4",
-            borderRadius: 20,
-            padding: 16,
-            justifyContent: showSpinner ? "center" : "flex-start",
-          }}
-        >
-          {showSpinner ? (
-            <ActivityIndicator size="small" color="#9A958C" />
-          ) : (
-            <FlatList
-              ref={flatListRef}
-              data={chatFeedData}
-              keyExtractor={(item, index) =>
-                item.id?.toString() || index.toString()
-              }
-              showsVerticalScrollIndicator={false}
-              onContentSizeChange={() =>
-                flatListRef.current?.scrollToEnd({ animated: true })
-              }
-              renderItem={({ item }) => {
-                const isUser =
-                  item.role === "user" ||
-                  item.sender === "user" ||
-                  item.message_type === "user";
-
-                return (
-                  <View
-                    style={{
-                      alignSelf: isUser ? "flex-end" : "flex-start",
-                      backgroundColor: isUser ? "#1C2024" : "transparent",
-                      borderWidth: isUser ? 0 : 1,
-                      borderColor: "#CBC2B4",
-                      borderRadius: 20,
-                      paddingHorizontal: 20,
-                      paddingVertical: 14,
-                      marginBottom: 16,
-                      maxWidth: "85%",
-                    }}
-                  >
-                    {isUser ? (
-                      <Text
-                        style={{
-                          fontSize: 15,
-                          lineHeight: 24,
-                          color: "#FFFFFF",
-                        }}
-                      >
-                        {item.content}
-                      </Text>
-                    ) : (
-                      <Markdown
-                        style={{
-                          body: {
-                            fontSize: 15,
-                            lineHeight: 24,
-                            color: "#1C1B17",
-                          },
-                          heading3: {
-                            fontSize: 18,
-                            fontWeight: "bold",
-                            color: "#1C1B17",
-                          },
-                          strong: { fontWeight: "700" },
-                        }}
-                        rules={{
-                          image: () => null,
-                          image_inline: () => null,
-                        }}
-                      >
-                        {item.content}
-                      </Markdown>
-                    )}
-                  </View>
-                );
-              }}
-            />
-          )}
-        </View>
-
-        {/* BOTTOM INPUT FOOTER */}
-        <View
-          style={{
-            position: "absolute",
-            bottom: 90,
-            left: 24,
-            right: 24,
+            paddingTop: 100,
+            paddingHorizontal: 24,
+            paddingBottom: 84,
             alignItems: "center",
           }}
         >
+          {/* ACTION CONTROLS */}
+          <View style={{ width: "100%", maxWidth: 680, marginBottom: 20 }}>
+            <ChatHistoryButton
+              onHistoryPress={handleHistoryPress}
+              onNewPress={handleNewPress}
+            />
+          </View>
+
+          {/* CHAT DISPLAY ASSISTANT CONTAINER */}
           <View
             style={{
-              width: "100%",
-              height: 1,
-              backgroundColor: "#E2DACB",
-              marginBottom: 20,
-            }}
-          />
-          <View
-            style={{
+              flex: 1,
               width: "100%",
               maxWidth: 680,
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 12,
+              backgroundColor: "transparent",
+              borderColor: "#CBC2B4",
+              borderRadius: 20,
+              padding: 16,
+              justifyContent: showSpinner ? "center" : "flex-start",
             }}
           >
+            {showSpinner ? (
+              <ActivityIndicator size="small" color="#9A958C" />
+            ) : (
+              <FlatList
+                ref={flatListRef}
+                data={chatFeedData}
+                keyExtractor={(item, index) =>
+                  item.id?.toString() || index.toString()
+                }
+                showsVerticalScrollIndicator={false}
+                onContentSizeChange={() =>
+                  flatListRef.current?.scrollToEnd({ animated: true })
+                }
+                renderItem={({ item }) => {
+                  const isUser =
+                    item.role === "user" ||
+                    item.sender === "user" ||
+                    item.message_type === "user";
+                  const isTyping = item.id === "pending-typing";
+
+                  return (
+                    <Animated.View
+                      entering={FadeInUp.duration(220).springify().damping(18)}
+                      style={{
+                        alignSelf: isUser ? "flex-end" : "flex-start",
+                        backgroundColor: isUser ? "#1C2024" : "transparent",
+                        borderWidth: isUser ? 0 : 1,
+                        borderColor: "#CBC2B4",
+                        borderRadius: 20,
+                        paddingHorizontal: 20,
+                        paddingVertical: 14,
+                        marginBottom: 16,
+                        maxWidth: "85%",
+                      }}
+                    >
+                      {isTyping ? (
+                        <ActivityIndicator size="small" color="#9A958C" />
+                      ) : isUser ? (
+                        <Text
+                          style={{
+                            fontSize: 15,
+                            lineHeight: 24,
+                            color: "#FFFFFF",
+                          }}
+                        >
+                          {extractStudentQuestion(item.content)}
+                        </Text>
+                      ) : (
+                        <Markdown
+                          style={{
+                            body: {
+                              fontSize: 15,
+                              lineHeight: 24,
+                              color: "#1C1B17",
+                            },
+                            heading3: {
+                              fontSize: 18,
+                              fontWeight: "bold",
+                              color: "#1C1B17",
+                            },
+                            strong: { fontWeight: "700" },
+                          }}
+                          rules={{
+                            image: () => null,
+                            image_inline: () => null,
+                          }}
+                        >
+                          {item.content}
+                        </Markdown>
+                      )}
+                    </Animated.View>
+                  );
+                }}
+              />
+            )}
+          </View>
+
+          {/* BOTTOM INPUT FOOTER */}
+          <View style={{ width: "100%", maxWidth: 680, alignItems: "center" }}>
             <View
               style={{
-                flex: 1,
-                height: 50,
-                borderRadius: 25,
-                borderWidth: 1,
-                borderColor: "#CBC2B4",
-                paddingHorizontal: 20,
-                justifyContent: "center",
+                width: "100%",
+                height: 1,
+                backgroundColor: "#E2DACB",
+                marginTop: 16,
+                marginBottom: 16,
               }}
-            >
-              <TextInput
-                value={inputText}
-                onChangeText={setInputText}
-                placeholder="Ask AURA..."
-                placeholderTextColor="#A39A8B"
-                editable={!isSending}
-                onSubmitEditing={handleSendMessage}
-                style={{ fontSize: 15, color: "#1C1B17", padding: 0 }}
-              />
-            </View>
-            <TouchableOpacity
-              onPress={handleSendMessage}
-              disabled={isSending || inputText.trim().length === 0}
+            />
+            <View
               style={{
-                width: 50,
-                height: 50,
-                borderRadius: 25,
-                backgroundColor:
-                  isSending || inputText.trim().length === 0
-                    ? "#C4BEB3"
-                    : "#9A958C",
+                width: "100%",
+                flexDirection: "row",
                 alignItems: "center",
-                justifyContent: "center",
+                gap: 12,
               }}
             >
-              <Text style={{ color: "#F4EFE6", fontSize: 18 }}>➔</Text>
-            </TouchableOpacity>
+              <View
+                style={{
+                  flex: 1,
+                  height: 50,
+                  borderRadius: 25,
+                  borderWidth: 1,
+                  borderColor: "#CBC2B4",
+                  paddingHorizontal: 20,
+                  justifyContent: "center",
+                }}
+              >
+                <TextInput
+                  value={inputText}
+                  onChangeText={setInputText}
+                  placeholder="Ask AURA..."
+                  placeholderTextColor="#A39A8B"
+                  editable={!isSending}
+                  onSubmitEditing={handleSendMessage}
+                  style={{ fontSize: 15, color: "#1C1B17", padding: 0 }}
+                />
+              </View>
+              <TouchableOpacity
+                onPress={handleSendMessage}
+                disabled={isSending || inputText.trim().length === 0}
+                style={{
+                  width: 50,
+                  height: 50,
+                  borderRadius: 25,
+                  backgroundColor:
+                    isSending || inputText.trim().length === 0
+                      ? "#C4BEB3"
+                      : "#9A958C",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Text style={{ color: "#F4EFE6", fontSize: 18 }}>➔</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
 
-      {/* 💡 SIDE PANEL DROPDOWN / OVERLAY SHEET LAYOUT */}
-      {isHistoryOpen && (
-        <View
-          style={{
-            position: "absolute",
-            top: 0,
-            bottom: 0,
-            left: 0,
-            width: SCREEN_WIDTH * 0.8, // Takes up 80% width profile layout
-            zIndex: 999,
-          }}
-        >
-          <ChatHistory
-            conversations={conversationsList}
-            isLoading={isListLoading}
-            activeConversationId={conversationId}
-            onClose={() => setIsHistoryOpen(false)}
-            onNewChat={handleNewPress}
-            onSelectConversation={handleSelectConversation}
-            onDeleteConversation={handleDeleteConversation}
+      {/* SIDE PANEL DRAWER — rendered in a Modal so it overlays the header and tab bar */}
+      <Modal
+        transparent
+        animationType="fade"
+        visible={isHistoryOpen}
+        onRequestClose={() => setIsHistoryOpen(false)}
+      >
+        <View style={{ flex: 1, flexDirection: "row" }}>
+          <View style={{ width: SCREEN_WIDTH * 0.8 }}>
+            <ChatHistory
+              conversations={conversationsList}
+              isLoading={isListLoading}
+              activeConversationId={conversationId}
+              onClose={() => setIsHistoryOpen(false)}
+              onNewChat={handleNewPress}
+              onSelectConversation={handleSelectConversation}
+              onDeleteConversation={handleDeleteConversation}
+            />
+          </View>
+
+          {/* BACKGROUND DISMISS LAYER CLOSES THE PANEL ON CLICK */}
+          <Pressable
+            onPress={() => setIsHistoryOpen(false)}
+            style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.3)" }}
           />
         </View>
-      )}
-
-      {/* BACKGROUND DISMISS LAYER CLOSES THE PANEL ON CLICK */}
-      {isHistoryOpen && (
-        <TouchableOpacity
-          activeOpacity={1}
-          onPress={() => setIsHistoryOpen(false)}
-          style={{
-            position: "absolute",
-            top: 0,
-            bottom: 0,
-            left: SCREEN_WIDTH * 0.8,
-            right: 0,
-            backgroundColor: "rgba(0,0,0,0.3)",
-            zIndex: 998,
-          }}
-        />
-      )}
+      </Modal>
     </View>
   );
 }
