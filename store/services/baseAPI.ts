@@ -51,6 +51,7 @@ export const baseAPI = createApi({
     "Recommendations",
     "AuralList",
     "AuralAttempt",
+    "AuralExercise",
     "TutorHistory",
     "Transcription",
   ],

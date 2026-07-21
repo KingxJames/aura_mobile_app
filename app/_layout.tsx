@@ -19,6 +19,14 @@ export default function RootLayout() {
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="grade/[id]" options={{ headerShown: false }} />
             <Stack.Screen name="quiz/[id]" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="aural-training/[gradeId]"
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="aural-training/exercise"
+              options={{ headerShown: false }}
+            />
             <Stack.Screen name="notFound" options={{ headerShown: false }} />
           </Stack>
         </ThemeProvider>

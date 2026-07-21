@@ -33,7 +33,13 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Allow Aura to use your microphone so you can sing back musical phrases for Echo Singing exercises."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
