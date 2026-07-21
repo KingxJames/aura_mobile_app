@@ -1,10 +1,12 @@
 import {
   clearAuth,
   setCredentials,
+  setUser,
   type AuthUser,
 } from "../features/authSlice";
 import { RootState } from "../store";
 import { baseAPI } from "./baseAPI";
+import { API_BASE_URL } from "./config/api";
 
 type ApiEnvelope<T> = {
   success: boolean;
@@ -112,6 +114,41 @@ export const authApi = baseAPI.injectEndpoints({
       },
     }),
 
+    uploadAvatar: build.mutation<
+      ApiEnvelope<{ user: AuthUser }>,
+      { body: Uint8Array; boundary: string }
+    >({
+      // Same manual-multipart approach as transcription uploads; see
+      // lib/multipart.ts for why FormData isn't used directly.
+      queryFn: async ({ body, boundary }, { getState, dispatch }) => {
+        const token = (getState() as RootState).auth.accessToken;
+
+        try {
+          const response = await fetch(`${API_BASE_URL}/v1/user/avatar`, {
+            method: "POST",
+            headers: {
+              Accept: "application/json",
+              "Content-Type": `multipart/form-data; boundary=${boundary}`,
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body,
+          });
+
+          const json = await response.json();
+
+          if (!response.ok || json?.success === false) {
+            return { error: { status: response.status, data: json } };
+          }
+
+          dispatch(setUser(json.user));
+          return { data: json };
+        } catch (error) {
+          return { error: { status: "FETCH_ERROR", error: String(error) } };
+        }
+      },
+      invalidatesTags: ["Auth", "User"],
+    }),
+
     // Optional utility endpoint to read auth state in one place
     meFromStore: build.query<
       { user: AuthUser | null; token: string | null },
@@ -137,5 +174,6 @@ export const {
   useLoginMutation,
   useGoogleSignInMutation,
   useLogoutMutation,
+  useUploadAvatarMutation,
   useMeFromStoreQuery,
 } = authApi;

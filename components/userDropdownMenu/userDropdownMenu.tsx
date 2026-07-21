@@ -31,13 +31,22 @@ function MenuRow({ label, ios, name, onPress, disabled }: MenuRowProps) {
   );
 }
 
-export default function UserDropdownMenu() {
+type UserDropdownMenuProps = {
+  onRequestClose?: () => void;
+};
+
+export default function UserDropdownMenu({ onRequestClose }: UserDropdownMenuProps) {
   const router = useRouter();
   const user = useSelector((state: RootState) => state.auth.user);
   const [logout, { isLoading: isLoggingOut }] = useLogoutMutation();
 
   const displayName = user?.name?.trim() || "User";
   const displayEmail = user?.email?.trim() || "No email";
+
+  const handleViewProfile = () => {
+    onRequestClose?.();
+    router.push("/profile");
+  };
 
   const handleLogout = async () => {
     try {
@@ -58,7 +67,12 @@ export default function UserDropdownMenu() {
 
       <View style={styles.separator} />
 
-      <MenuRow label="View profile" ios="person" name="person" />
+      <MenuRow
+        label="View profile"
+        ios="person"
+        name="person"
+        onPress={handleViewProfile}
+      />
 
       <MenuRow label="Settings" ios="gearshape" name="settings" />
 

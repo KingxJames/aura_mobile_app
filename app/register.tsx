@@ -57,6 +57,11 @@ export default function Register() {
       return;
     }
 
+    if (password.length < 8) {
+      setUiError("Password must be at least 8 characters.");
+      return;
+    }
+
     setUiError(null);
 
     try {

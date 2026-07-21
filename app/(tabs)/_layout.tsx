@@ -251,7 +251,7 @@ export default function TabLayout() {
             ]}
             onPress={(event) => event.stopPropagation()}
           >
-            <UserDropdownMenu />
+            <UserDropdownMenu onRequestClose={closeUserMenu} />
           </Pressable>
         </Pressable>
       </Modal>
