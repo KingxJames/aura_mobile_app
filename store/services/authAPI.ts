@@ -33,6 +33,12 @@ type GoogleSignInBody = {
   google_token: string;
 };
 
+type ChangePasswordBody = {
+  current_password: string;
+  new_password: string;
+  new_password_confirmation: string;
+};
+
 export const authApi = baseAPI.injectEndpoints({
   endpoints: (build) => ({
     register: build.mutation<ApiEnvelope<AuthPayload>, RegisterBody>({
@@ -114,6 +120,15 @@ export const authApi = baseAPI.injectEndpoints({
       },
     }),
 
+    changePassword: build.mutation<ApiEnvelope<{}>, ChangePasswordBody>({
+      query: (body) => ({
+        url: "/v1/user/password",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["Auth", "User"],
+    }),
+
     uploadAvatar: build.mutation<
       ApiEnvelope<{ user: AuthUser }>,
       { body: Uint8Array; boundary: string }
@@ -174,6 +189,7 @@ export const {
   useLoginMutation,
   useGoogleSignInMutation,
   useLogoutMutation,
+  useChangePasswordMutation,
   useUploadAvatarMutation,
   useMeFromStoreQuery,
 } = authApi;

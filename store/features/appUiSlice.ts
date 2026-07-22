@@ -22,6 +22,7 @@ type AppUiState = {
   sidebarOpen: boolean;
   activeTab: ActiveTab;
   theme: ThemeMode;
+  notificationsEnabled: boolean;
   globalLoading: boolean;
   activeModal: string | null;
   toasts: Toast[];
@@ -31,6 +32,7 @@ const initialState: AppUiState = {
   sidebarOpen: true,
   activeTab: "dashboard",
   theme: "system",
+  notificationsEnabled: false,
   globalLoading: false,
   activeModal: null,
   toasts: [],
@@ -53,6 +55,10 @@ const appUiSlice = createSlice({
 
     setTheme: (state, action: PayloadAction<ThemeMode>) => {
       state.theme = action.payload;
+    },
+
+    setNotificationsEnabled: (state, action: PayloadAction<boolean>) => {
+      state.notificationsEnabled = action.payload;
     },
 
     setGlobalLoading: (state, action: PayloadAction<boolean>) => {
@@ -83,6 +89,7 @@ export const {
   setSidebarOpen,
   setActiveTab,
   setTheme,
+  setNotificationsEnabled,
   setGlobalLoading,
   openModal,
   closeModal,

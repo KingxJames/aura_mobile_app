@@ -1,8 +1,10 @@
 import { useGetCurriculumQuery, type Grade } from "@/store/services/curriculumAPI";
+import type { ThemeColors } from "@/constants/Colors";
+import { useThemeColors } from "@/hooks/useThemeColors";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { ChevronRight, Ear, Lock } from "lucide-react-native";
-import React from "react";
+import React, { useMemo } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -28,9 +30,11 @@ const AURAL_READY_LEVEL = 1;
 type GradeCardProps = {
   grade: Grade;
   index: number;
+  colors: ThemeColors;
+  styles: ReturnType<typeof createStyles>;
 };
 
-function AuralGradeCard({ grade, index }: GradeCardProps) {
+function AuralGradeCard({ grade, index, colors, styles }: GradeCardProps) {
   const router = useRouter();
   const scale = useSharedValue(1);
   const isReady = grade.level_number === AURAL_READY_LEVEL;
@@ -61,32 +65,45 @@ function AuralGradeCard({ grade, index }: GradeCardProps) {
           accessibilityLabel={`Grade ${grade.level_number} Aural Training${isReady ? "" : " (coming soon)"}`}
         >
           <LinearGradient
-            colors={isReady ? (["#178CCF", "#0F5E8C"] as const) : (["#DCD0BA", "#CBBE9F"] as const)}
+            colors={
+              isReady
+                ? ([colors.blue, colors.blue] as const)
+                : // Second stop for the locked-state gradient isn't covered
+                  // by the theme token set - kept as a fixed literal.
+                  ([colors.border, "#CBBE9F"] as const)
+            }
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.cardGradient}
           >
             <View style={styles.cardTopRow}>
               <View>
-                <Text style={[styles.gradeLabel, { color: isReady ? "#FFE8B8" : "#8A7F69" }]}>
+                <Text
+                  style={[
+                    styles.gradeLabel,
+                    // "#FFE8B8" is a one-off decorative accent used only
+                    // here on the ready-state gradient - left hardcoded.
+                    { color: isReady ? "#FFE8B8" : colors.textMuted },
+                  ]}
+                >
                   GRADE
                 </Text>
-                <Text style={[styles.gradeNumber, { color: isReady ? "#F5F1E8" : "#5B5240" }]}>
+                <Text style={[styles.gradeNumber, { color: isReady ? colors.onInk : colors.textMuted }]}>
                   {grade.level_number}
                 </Text>
               </View>
               {isReady ? (
-                <ChevronRight size={22} color="#F5F1E8" />
+                <ChevronRight size={22} color={colors.onInk} />
               ) : (
-                <Lock size={20} color="#8A7F69" />
+                <Lock size={20} color={colors.textMuted} />
               )}
             </View>
 
-            <Text style={[styles.gradeTitle, { color: isReady ? "#F5F1E8" : "#5B5240" }]}>
+            <Text style={[styles.gradeTitle, { color: isReady ? colors.onInk : colors.textMuted }]}>
               {grade.title} · Aural
             </Text>
             <Text
-              style={[styles.gradeTeaser, { color: isReady ? "#F5F1E8" : "#8A7F69" }]}
+              style={[styles.gradeTeaser, { color: isReady ? colors.onInk : colors.textMuted }]}
               numberOfLines={2}
             >
               {isReady
@@ -98,11 +115,13 @@ function AuralGradeCard({ grade, index }: GradeCardProps) {
               <View
                 style={[
                   styles.badge,
+                  // Translucent overlay tints don't map onto flat theme
+                  // tokens - left as fixed rgba literals.
                   { backgroundColor: isReady ? "rgba(245,241,232,0.16)" : "rgba(91,82,64,0.12)" },
                 ]}
               >
-                <Ear size={12} color={isReady ? "#F5F1E8" : "#8A7F69"} />
-                <Text style={[styles.badgeText, { color: isReady ? "#F5F1E8" : "#8A7F69" }]}>
+                <Ear size={12} color={isReady ? colors.onInk : colors.textMuted} />
+                <Text style={[styles.badgeText, { color: isReady ? colors.onInk : colors.textMuted }]}>
                   {isReady ? "4 lessons" : "Locked"}
                 </Text>
               </View>
@@ -117,6 +136,8 @@ function AuralGradeCard({ grade, index }: GradeCardProps) {
 export default function AuralGrades() {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const {
     data: grades,
     isLoading,
@@ -134,7 +155,7 @@ export default function AuralGrades() {
         <RefreshControl
           refreshing={isFetching && !isLoading}
           onRefresh={refetch}
-          tintColor="#178CCF"
+          tintColor={colors.blue}
         />
       }
     >
@@ -150,7 +171,7 @@ export default function AuralGrades() {
 
         {isLoading && (
           <View style={styles.centerState}>
-            <ActivityIndicator color="#178CCF" size="large" />
+            <ActivityIndicator color={colors.blue} size="large" />
             <Text style={styles.centerStateText}>Tuning your ear…</Text>
           </View>
         )}
@@ -177,7 +198,13 @@ export default function AuralGrades() {
         {!isLoading && !isError && (grades?.length ?? 0) > 0 && (
           <View style={styles.list}>
             {grades!.map((grade, index) => (
-              <AuralGradeCard key={grade.id} grade={grade} index={index} />
+              <AuralGradeCard
+                key={grade.id}
+                grade={grade}
+                index={index}
+                colors={colors}
+                styles={styles}
+              />
             ))}
           </View>
         )}
@@ -190,81 +217,82 @@ export default function AuralGrades() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#F5EFE3" },
-  contentContainer: {
-    alignItems: "center",
-    justifyContent: "flex-start",
-    paddingHorizontal: 16,
-    paddingTop: 96,
-    paddingBottom: 92,
-  },
-  contentColumn: { width: "100%" },
-  contentColumnTablet: { maxWidth: 680 },
-  headerRow: { marginBottom: 18, paddingHorizontal: 2 },
-  heading: {
-    color: "#101A2A",
-    fontFamily: "Georgia",
-    fontSize: 24,
-    lineHeight: 28,
-    fontWeight: "700",
-  },
-  subheading: { marginTop: 4, color: "#2E425E", fontSize: 13, lineHeight: 18 },
-  centerState: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 48,
-    gap: 12,
-  },
-  centerStateText: { color: "#2E425E", fontSize: 14 },
-  retryButton: {
-    marginTop: 4,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: "#16253A",
-  },
-  retryButtonText: { color: "#F5F1E8", fontSize: 13, fontWeight: "700" },
-  list: { gap: 14 },
-  cardWrapper: { width: "100%" },
-  cardGradient: {
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 16,
-  },
-  cardTopRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-  },
-  gradeLabel: { fontSize: 10, letterSpacing: 1.9, marginBottom: 2, fontWeight: "700" },
-  gradeNumber: { fontFamily: "Georgia", fontSize: 36, lineHeight: 40 },
-  gradeTitle: {
-    fontFamily: "Georgia",
-    fontSize: 18,
-    lineHeight: 22,
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  gradeTeaser: { fontSize: 13, lineHeight: 18, opacity: 0.88 },
-  badgeRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12 },
-  badge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 999,
-  },
-  badgeText: { fontSize: 11, fontWeight: "700" },
-  quote: {
-    marginTop: 28,
-    textAlign: "center",
-    color: "#1F2F4A",
-    fontFamily: "Georgia",
-    fontStyle: "italic",
-    fontSize: 13,
-    lineHeight: 22,
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    screen: { flex: 1, backgroundColor: colors.bg },
+    contentContainer: {
+      alignItems: "center",
+      justifyContent: "flex-start",
+      paddingHorizontal: 16,
+      paddingTop: 96,
+      paddingBottom: 92,
+    },
+    contentColumn: { width: "100%" },
+    contentColumnTablet: { maxWidth: 680 },
+    headerRow: { marginBottom: 18, paddingHorizontal: 2 },
+    heading: {
+      color: colors.textPrimary,
+      fontFamily: "Georgia",
+      fontSize: 24,
+      lineHeight: 28,
+      fontWeight: "700",
+    },
+    subheading: { marginTop: 4, color: colors.textPrimary, fontSize: 13, lineHeight: 18 },
+    centerState: {
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: 48,
+      gap: 12,
+    },
+    centerStateText: { color: colors.textPrimary, fontSize: 14 },
+    retryButton: {
+      marginTop: 4,
+      paddingHorizontal: 18,
+      paddingVertical: 10,
+      borderRadius: 10,
+      backgroundColor: colors.ink,
+    },
+    retryButtonText: { color: colors.onInk, fontSize: 13, fontWeight: "700" },
+    list: { gap: 14 },
+    cardWrapper: { width: "100%" },
+    cardGradient: {
+      borderRadius: 16,
+      paddingHorizontal: 16,
+      paddingTop: 14,
+      paddingBottom: 16,
+    },
+    cardTopRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      justifyContent: "space-between",
+    },
+    gradeLabel: { fontSize: 10, letterSpacing: 1.9, marginBottom: 2, fontWeight: "700" },
+    gradeNumber: { fontFamily: "Georgia", fontSize: 36, lineHeight: 40 },
+    gradeTitle: {
+      fontFamily: "Georgia",
+      fontSize: 18,
+      lineHeight: 22,
+      marginTop: 8,
+      marginBottom: 4,
+    },
+    gradeTeaser: { fontSize: 13, lineHeight: 18, opacity: 0.88 },
+    badgeRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12 },
+    badge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 5,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 999,
+    },
+    badgeText: { fontSize: 11, fontWeight: "700" },
+    quote: {
+      marginTop: 28,
+      textAlign: "center",
+      color: colors.textPrimary,
+      fontFamily: "Georgia",
+      fontStyle: "italic",
+      fontSize: 13,
+      lineHeight: 22,
+    },
+  });

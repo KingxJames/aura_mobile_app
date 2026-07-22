@@ -1,8 +1,13 @@
 import { useRouter } from "expo-router";
+import { useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useThemeColors } from "@/hooks/useThemeColors";
+import type { ThemeColors } from "@/constants/Colors";
 
 export default function NotFound() {
   const router = useRouter();
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   return (
     <View style={styles.container}>
@@ -19,40 +24,42 @@ export default function NotFound() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fdfdfd",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 24,
-  },
-  code: {
-    fontSize: 80,
-    fontWeight: "bold",
-    color: "#2563eb",
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "600",
-    marginTop: 10,
-  },
-  description: {
-    fontSize: 16,
-    color: "#666",
-    textAlign: "center",
-    marginTop: 10,
-    marginBottom: 25,
-  },
-  button: {
-    backgroundColor: "#2563eb",
-    paddingVertical: 12,
-    paddingHorizontal: 30,
-    borderRadius: 8,
-  },
-  buttonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.bg,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: 24,
+    },
+    code: {
+      fontSize: 80,
+      fontWeight: "bold",
+      color: colors.blue,
+    },
+    title: {
+      fontSize: 24,
+      fontWeight: "600",
+      color: colors.textPrimary,
+      marginTop: 10,
+    },
+    description: {
+      fontSize: 16,
+      color: colors.textSecondary,
+      textAlign: "center",
+      marginTop: 10,
+      marginBottom: 25,
+    },
+    button: {
+      backgroundColor: colors.blue,
+      paddingVertical: 12,
+      paddingHorizontal: 30,
+      borderRadius: 8,
+    },
+    buttonText: {
+      color: colors.onInk,
+      fontSize: 16,
+      fontWeight: "600",
+    },
+  });

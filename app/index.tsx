@@ -1,12 +1,16 @@
 import { useRouter } from "expo-router";
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useSelector } from "react-redux";
 import type { RootState } from "../store/store";
+import { useThemeColors } from "@/hooks/useThemeColors";
+import type { ThemeColors } from "@/constants/Colors";
 
 export default function RootIndex() {
   const router = useRouter();
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const isAuthenticated = useSelector(
     (state: RootState) => state.auth.isAuthenticated,
   );
@@ -18,20 +22,21 @@ export default function RootIndex() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        <ActivityIndicator size="large" color="#1f3c88" />
+        <ActivityIndicator size="large" color={colors.blue} />
       </View>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#efece4",
-  },
-  container: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: colors.bg,
+    },
+    container: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+  });

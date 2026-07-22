@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -13,6 +13,8 @@ import {
 import PlatformIcon from "../platformIcon/platformIcon";
 import { useGetTranscriptionsQuery } from "../../store/services/transcriptionAPI";
 import type { Transcription } from "../../store/services/transcriptionAPI";
+import { useThemeColors } from "../../hooks/useThemeColors";
+import type { ThemeColors } from "../../constants/Colors";
 
 interface TranscribeHistoryModalProps {
   visible: boolean;
@@ -27,6 +29,8 @@ export default function TranscribeHistoryModal({
 }: TranscribeHistoryModalProps) {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   const { data: transcriptions, isLoading } = useGetTranscriptionsQuery(
     undefined,
@@ -49,7 +53,7 @@ export default function TranscribeHistoryModal({
         style={({ pressed }) => ({
           paddingVertical: 16,
           borderBottomWidth: 1,
-          borderBottomColor: "#EAE3D5",
+          borderBottomColor: colors.border,
           opacity: pressed ? 0.65 : 1,
         })}
       >
@@ -82,7 +86,7 @@ export default function TranscribeHistoryModal({
             {
               width: isTablet ? 420 : "90%",
               borderLeftWidth: 1,
-              borderColor: "#EAE3D5",
+              borderColor: colors.border,
             },
           ]}
         >
@@ -98,7 +102,7 @@ export default function TranscribeHistoryModal({
               <PlatformIcon
                 ios="xmark.circle.fill"
                 name="cancel"
-                color="#D9A352"
+                color={colors.gold}
                 size={28}
               />
             </Pressable>
@@ -107,7 +111,7 @@ export default function TranscribeHistoryModal({
           {/* BODY */}
           {isLoading ? (
             <View style={styles.centeredBody}>
-              <ActivityIndicator color="#E2A960" />
+              <ActivityIndicator color={colors.gold} />
             </View>
           ) : !transcriptions?.length ? (
             <View style={styles.listEmptyStateContentContainer}>
@@ -129,67 +133,68 @@ export default function TranscribeHistoryModal({
   );
 }
 
-const styles = StyleSheet.create({
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: "rgba(18, 30, 49, 0.12)",
-    flexDirection: "row",
-    justifyContent: "flex-end",
-  },
-  dismissOutsideZone: {
-    position: "absolute",
-    left: 0,
-    top: 0,
-    bottom: 0,
-    right: 0,
-    zIndex: -1,
-  },
-  drawerContentContainer: {
-    height: "100%",
-    backgroundColor: "#FAF6EE",
-    paddingTop: Platform.OS === "ios" ? 64 : 44,
-    paddingHorizontal: 24,
-    shadowColor: "#000",
-    shadowOffset: { width: -4, height: 0 },
-    shadowOpacity: 0.04,
-    shadowRadius: 12,
-    elevation: 5,
-  },
-  headerWrapperRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 40,
-  },
-  panelTitleText: {
-    color: "#162538",
-    fontSize: 24,
-    fontFamily: Platform.OS === "ios" ? "Georgia" : "serif",
-    fontWeight: "400",
-  },
-  centeredBody: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  listEmptyStateContentContainer: {
-    flex: 1,
-    alignItems: "flex-start",
-    paddingTop: 12,
-  },
-  emptyStateMessageText: {
-    fontSize: 15,
-    color: "#54657B",
-    fontWeight: "400",
-  },
-  itemTitle: {
-    color: "#162538",
-    fontSize: 14,
-    fontWeight: "500",
-    marginBottom: 4,
-  },
-  itemDate: {
-    color: "#54657B",
-    fontSize: 12,
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    modalBackdrop: {
+      flex: 1,
+      backgroundColor: "rgba(18, 30, 49, 0.12)",
+      flexDirection: "row",
+      justifyContent: "flex-end",
+    },
+    dismissOutsideZone: {
+      position: "absolute",
+      left: 0,
+      top: 0,
+      bottom: 0,
+      right: 0,
+      zIndex: -1,
+    },
+    drawerContentContainer: {
+      height: "100%",
+      backgroundColor: colors.bg,
+      paddingTop: Platform.OS === "ios" ? 64 : 44,
+      paddingHorizontal: 24,
+      shadowColor: "#000",
+      shadowOffset: { width: -4, height: 0 },
+      shadowOpacity: 0.04,
+      shadowRadius: 12,
+      elevation: 5,
+    },
+    headerWrapperRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 40,
+    },
+    panelTitleText: {
+      color: colors.textPrimary,
+      fontSize: 24,
+      fontFamily: Platform.OS === "ios" ? "Georgia" : "serif",
+      fontWeight: "400",
+    },
+    centeredBody: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    listEmptyStateContentContainer: {
+      flex: 1,
+      alignItems: "flex-start",
+      paddingTop: 12,
+    },
+    emptyStateMessageText: {
+      fontSize: 15,
+      color: colors.textSecondary,
+      fontWeight: "400",
+    },
+    itemTitle: {
+      color: colors.textPrimary,
+      fontSize: 14,
+      fontWeight: "500",
+      marginBottom: 4,
+    },
+    itemDate: {
+      color: colors.textSecondary,
+      fontSize: 12,
+    },
+  });

@@ -7,6 +7,8 @@ import {
     type AuralExercise,
     type AuralModuleType,
 } from "@/store/services/auralTrainingAPI";
+import type { ThemeColors } from "@/constants/Colors";
+import { useThemeColors } from "@/hooks/useThemeColors";
 import { Audio } from "expo-av";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -20,7 +22,7 @@ import {
     Trophy,
     X,
 } from "lucide-react-native";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
     ActivityIndicator,
     Pressable,
@@ -75,6 +77,8 @@ export default function AuralExerciseScreen() {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
   const contentInset = isTablet ? 32 : 16;
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   const [generateExercise] = useGenerateAuralExerciseMutation();
   const [submitAttempt, { isLoading: isSubmitting }] =
@@ -390,7 +394,7 @@ export default function AuralExerciseScreen() {
   if (phase === "loading" && !exercise) {
     return (
       <View style={styles.centerScreen}>
-        <ActivityIndicator color="#178CCF" size="large" />
+        <ActivityIndicator color={colors.blue} size="large" />
         <Text style={styles.centerStateText}>Building your exercise…</Text>
       </View>
     );
@@ -418,13 +422,13 @@ export default function AuralExerciseScreen() {
           accessibilityRole="button"
           accessibilityLabel="Close exercise"
         >
-          <ArrowLeft size={20} color="#101A2A" />
+          <ArrowLeft size={20} color={colors.textPrimary} />
         </Pressable>
         <Text style={styles.topBarTitle} numberOfLines={1}>
           {moduleLabel ?? "Aural Training"}
         </Text>
         <View style={styles.xpBadge}>
-          <Sparkles size={13} color="#178CCF" />
+          <Sparkles size={13} color={colors.blue} />
           <Text style={styles.xpBadgeText}>+{AURAL_XP} XP</Text>
         </View>
       </View>
@@ -453,7 +457,7 @@ export default function AuralExerciseScreen() {
             style={[shakeStyle, styles.exerciseWrap]}
           >
             <LinearGradient
-              colors={["#16253A", "#0F1B2C"]}
+              colors={[colors.ink, "#0F1B2C"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.exerciseCard}
@@ -509,7 +513,7 @@ export default function AuralExerciseScreen() {
                     disabled={isPlaying}
                     style={styles.primaryPillButton}
                   >
-                    <Play size={16} color="#F5F1E8" />
+                    <Play size={16} color={colors.onInk} />
                     <Text style={styles.primaryPillButtonText}>
                       {isPlaying ? "Listen and tap…" : "Play the Beat"}
                     </Text>
@@ -548,6 +552,8 @@ export default function AuralExerciseScreen() {
                             : undefined
                         }
                         onPress={() => handleSelectTimeSignature(option)}
+                        colors={colors}
+                        styles={styles}
                       />
                     ))}
                     {phase === "feedback" &&
@@ -571,7 +577,7 @@ export default function AuralExerciseScreen() {
                     entering={FadeIn.duration(220)}
                     style={styles.recordBlock}
                   >
-                    <Check size={32} color="#2F7A4F" />
+                    <Check size={32} color={colors.success} />
                     <Text style={styles.feedbackStat}>
                       Saved! Next phrase coming up…
                     </Text>
@@ -582,7 +588,7 @@ export default function AuralExerciseScreen() {
                     disabled={isPlaying}
                     style={styles.primaryPillButton}
                   >
-                    <Play size={16} color="#F5F1E8" />
+                    <Play size={16} color={colors.onInk} />
                     <Text style={styles.primaryPillButtonText}>
                       {isPlaying ? "Playing…" : "Play Phrase"}
                     </Text>
@@ -597,7 +603,7 @@ export default function AuralExerciseScreen() {
                       disabled={isPlaying}
                       style={styles.secondaryPillButton}
                     >
-                      <Play size={14} color="#16253A" />
+                      <Play size={14} color={colors.textPrimary} />
                       <Text style={styles.secondaryPillButtonText}>
                         Play again
                       </Text>
@@ -614,9 +620,9 @@ export default function AuralExerciseScreen() {
                         ]}
                       >
                         {isRecording ? (
-                          <Square size={20} color="#F5F1E8" />
+                          <Square size={20} color={colors.onInk} />
                         ) : (
-                          <Mic size={22} color="#F5F1E8" />
+                          <Mic size={22} color={colors.onInk} />
                         )}
                         <Text style={styles.recordButtonText}>
                           {isRecording ? "Stop" : "Sing it back"}
@@ -628,7 +634,7 @@ export default function AuralExerciseScreen() {
                         disabled={isSubmitting}
                         style={styles.primaryPillButton}
                       >
-                        <Check size={16} color="#F5F1E8" />
+                        <Check size={16} color={colors.onInk} />
                         <Text style={styles.primaryPillButtonText}>
                           Submit recording
                         </Text>
@@ -650,7 +656,7 @@ export default function AuralExerciseScreen() {
                     disabled={isPlaying}
                     style={styles.secondaryPillButton}
                   >
-                    <Play size={14} color="#16253A" />
+                    <Play size={14} color={colors.textPrimary} />
                     <Text style={styles.secondaryPillButtonText}>
                       Play Original
                     </Text>
@@ -663,7 +669,7 @@ export default function AuralExerciseScreen() {
                       (!hasPlayedOnce || isPlaying) && styles.pillButtonDisabled,
                     ]}
                   >
-                    <Play size={14} color="#F5F1E8" />
+                    <Play size={14} color={colors.onInk} />
                     <Text style={styles.primaryPillButtonText}>Play Again</Text>
                   </Pressable>
                 </View>
@@ -690,6 +696,8 @@ export default function AuralExerciseScreen() {
                         onPress={() =>
                           handleSelectPosition(option as "beginning" | "end")
                         }
+                        colors={colors}
+                        styles={styles}
                       />
                     ))}
                   </Animated.View>
@@ -706,7 +714,7 @@ export default function AuralExerciseScreen() {
                     disabled={isPlaying}
                     style={styles.primaryPillButton}
                   >
-                    <Play size={16} color="#F5F1E8" />
+                    <Play size={16} color={colors.onInk} />
                     <Text style={styles.primaryPillButtonText}>
                       {isPlaying ? "Playing…" : "Play"}
                     </Text>
@@ -721,7 +729,7 @@ export default function AuralExerciseScreen() {
                       disabled={isPlaying}
                       style={styles.secondaryPillButton}
                     >
-                      <Play size={14} color="#16253A" />
+                      <Play size={14} color={colors.textPrimary} />
                       <Text style={styles.secondaryPillButtonText}>
                         Play again
                       </Text>
@@ -745,6 +753,8 @@ export default function AuralExerciseScreen() {
                               : undefined
                           }
                           onPress={() => setSelectedDynamic(option)}
+                          colors={colors}
+                          styles={styles}
                         />
                       ))}
                     </View>
@@ -770,6 +780,8 @@ export default function AuralExerciseScreen() {
                               : undefined
                           }
                           onPress={() => setSelectedArticulation(option)}
+                          colors={colors}
+                          styles={styles}
                         />
                       ))}
                     </View>
@@ -786,7 +798,7 @@ export default function AuralExerciseScreen() {
                             styles.pillButtonDisabled,
                         ]}
                       >
-                        <Check size={16} color="#F5F1E8" />
+                        <Check size={16} color={colors.onInk} />
                         <Text style={styles.primaryPillButtonText}>Submit</Text>
                       </Pressable>
                     )}
@@ -808,9 +820,9 @@ export default function AuralExerciseScreen() {
             style={styles.resultsCard}
           >
             {exercise.module_type === "echo_singing" ? (
-              <Mic size={48} color="#178CCF" />
+              <Mic size={48} color={colors.blue} />
             ) : (
-              <Trophy size={48} color="#D79A1B" />
+              <Trophy size={48} color={colors.gold} />
             )}
 
             <Text style={styles.resultsHeading}>
@@ -832,7 +844,7 @@ export default function AuralExerciseScreen() {
             )}
 
             <View style={styles.resultsXpBadge}>
-              <Sparkles size={13} color="#178CCF" />
+              <Sparkles size={13} color={colors.blue} />
               <Text style={styles.resultsXpBadgeText}>+{AURAL_XP} XP</Text>
             </View>
 
@@ -856,6 +868,8 @@ function ChoiceButton({
   compact,
   isCorrectAnswer,
   onPress,
+  colors,
+  styles,
 }: {
   label: string;
   selected: boolean;
@@ -866,6 +880,8 @@ function ChoiceButton({
   // while still answering, when there's nothing to reveal yet.
   isCorrectAnswer?: boolean;
   onPress: () => void;
+  colors: ThemeColors;
+  styles: ReturnType<typeof createStyles>;
 }) {
   const isWrongSelection = selected && isCorrectAnswer === false;
 
@@ -891,253 +907,258 @@ function ChoiceButton({
       >
         {label.charAt(0).toUpperCase() + label.slice(1)}
       </Text>
-      {isCorrectAnswer && <Check size={16} color="#F5F1E8" />}
-      {isWrongSelection && <X size={16} color="#F5F1E8" />}
+      {isCorrectAnswer && <Check size={16} color={colors.onInk} />}
+      {isWrongSelection && <X size={16} color={colors.onInk} />}
     </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#F5EFE3" },
-  centerScreen: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-    backgroundColor: "#F5EFE3",
-  },
-  centerStateText: { color: "#2E425E", fontSize: 14 },
-  retryButton: {
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: "#16253A",
-  },
-  retryButtonText: { color: "#F5F1E8", fontSize: 13, fontWeight: "700" },
-  topBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingTop: 8,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#D9CBB6",
-  },
-  backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: "#CFC5B5",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  topBarTitle: {
-    flex: 1,
-    color: "#101A2A",
-    fontFamily: "Georgia",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  xpBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: "#F5F1E8",
-    borderWidth: 1,
-    borderColor: "#D2C5B0",
-  },
-  xpBadgeText: { color: "#101A2A", fontSize: 12, fontWeight: "700" },
-  progressRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingTop: 14,
-  },
-  progressTrack: {
-    flex: 1,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "#E5DCC7",
-    overflow: "hidden",
-  },
-  progressFill: {
-    height: "100%",
-    borderRadius: 3,
-    backgroundColor: "#178CCF",
-  },
-  progressLabel: { color: "#2E425E", fontSize: 12, fontWeight: "700" },
-  scroll: { paddingTop: 16, paddingBottom: 48 },
-  exerciseWrap: { width: "100%" },
-  exerciseCard: {
-    borderRadius: 16,
-    paddingHorizontal: 18,
-    paddingTop: 20,
-    paddingBottom: 22,
-  },
-  exerciseHeading: {
-    color: "#F5F1E8",
-    fontFamily: "Georgia",
-    fontSize: 19,
-    lineHeight: 26,
-    marginBottom: 6,
-  },
-  exerciseSubtext: { color: "#C9BFA8", fontSize: 13 },
-  interactionBlock: { marginTop: 20, gap: 14, alignItems: "center" },
-  primaryPillButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingHorizontal: 22,
-    paddingVertical: 14,
-    borderRadius: 999,
-    backgroundColor: "#178CCF",
-  },
-  primaryPillButtonText: { color: "#F5F1E8", fontSize: 15, fontWeight: "700" },
-  secondaryPillButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    borderRadius: 999,
-    backgroundColor: "#F5F1E8",
-    borderWidth: 1,
-    borderColor: "#D2C5B0",
-  },
-  secondaryPillButtonText: { color: "#16253A", fontSize: 14, fontWeight: "700" },
-  pillButtonDisabled: { opacity: 0.45 },
-  playRow: { flexDirection: "row", gap: 10, justifyContent: "center" },
-  tapButton: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: "#D79A1B",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  tapButtonText: {
-    color: "#16253A",
-    fontSize: 22,
-    fontWeight: "800",
-    letterSpacing: 1.5,
-  },
-  optionsList: { width: "100%", gap: 10, alignItems: "stretch" },
-  questionPrompt: {
-    color: "#101A2A",
-    fontSize: 14,
-    fontWeight: "700",
-    textAlign: "center",
-    marginTop: 8,
-  },
-  choiceRow: { flexDirection: "row", gap: 10, justifyContent: "center" },
-  feedbackStat: {
-    color: "#2E425E",
-    fontSize: 13,
-    fontWeight: "700",
-    textAlign: "center",
-    marginTop: 4,
-  },
-  optionRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#D2C5B0",
-    backgroundColor: "#F5F1E8",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  optionRowCompact: { flex: 1, justifyContent: "center", gap: 8 },
-  optionRowSelected: { backgroundColor: "#178CCF", borderColor: "#178CCF" },
-  optionRowCorrect: { backgroundColor: "#2F7A4F", borderColor: "#2F7A4F" },
-  optionRowWrong: { backgroundColor: "#B23B3B", borderColor: "#B23B3B" },
-  optionText: { color: "#101A2A", fontSize: 15, fontWeight: "600" },
-  optionTextSelected: { color: "#F5F1E8" },
-  recordBlock: { alignItems: "center", gap: 14 },
-  recordButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 22,
-    paddingVertical: 14,
-    borderRadius: 999,
-    backgroundColor: "#B23B3B",
-  },
-  recordButtonActive: { backgroundColor: "#7A2323" },
-  recordButtonText: { color: "#F5F1E8", fontSize: 15, fontWeight: "700" },
-  errorText: { color: "#B23B3B", fontSize: 12, textAlign: "center" },
-  resultsScroll: {
-    flexGrow: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 24,
-    paddingVertical: 40,
-  },
-  resultsCard: {
-    width: "100%",
-    maxWidth: 360,
-    alignItems: "center",
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: "#D2C5B0",
-    backgroundColor: "#F5F1E8",
-    paddingVertical: 32,
-    paddingHorizontal: 24,
-    gap: 6,
-  },
-  resultsHeading: {
-    marginTop: 12,
-    color: "#101A2A",
-    fontFamily: "Georgia",
-    fontSize: 22,
-    fontWeight: "700",
-  },
-  resultsMessage: {
-    color: "#2A3C58",
-    fontSize: 14,
-    lineHeight: 20,
-    textAlign: "center",
-    marginBottom: 8,
-  },
-  resultsScore: {
-    marginTop: 8,
-    color: "#16253A",
-    fontFamily: "Georgia",
-    fontSize: 44,
-  },
-  resultsSubtext: { color: "#5A6B85", fontSize: 13, marginBottom: 12 },
-  resultsXpBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 999,
-    backgroundColor: "#E3F0F7",
-    marginBottom: 20,
-  },
-  resultsXpBadgeText: { color: "#0F5E8C", fontSize: 12, fontWeight: "700" },
-  primaryButton: {
-    width: "100%",
-    borderRadius: 10,
-    backgroundColor: "#16253A",
-    paddingVertical: 14,
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  primaryButtonText: { color: "#F5F1E8", fontSize: 15, fontWeight: "700" },
-  secondaryButton: {
-    width: "100%",
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  secondaryButtonText: { color: "#2E425E", fontSize: 14, fontWeight: "600" },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    screen: { flex: 1, backgroundColor: colors.bg },
+    centerScreen: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 12,
+      backgroundColor: colors.bg,
+    },
+    centerStateText: { color: colors.textPrimary, fontSize: 14 },
+    retryButton: {
+      paddingHorizontal: 18,
+      paddingVertical: 10,
+      borderRadius: 10,
+      backgroundColor: colors.ink,
+    },
+    retryButtonText: { color: colors.onInk, fontSize: 13, fontWeight: "700" },
+    topBar: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      paddingTop: 8,
+      paddingBottom: 10,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    backButton: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    topBarTitle: {
+      flex: 1,
+      color: colors.textPrimary,
+      fontFamily: "Georgia",
+      fontSize: 16,
+      fontWeight: "700",
+    },
+    xpBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 999,
+      backgroundColor: colors.bg,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    xpBadgeText: { color: colors.textPrimary, fontSize: 12, fontWeight: "700" },
+    progressRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      paddingTop: 14,
+    },
+    progressTrack: {
+      flex: 1,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: colors.border,
+      overflow: "hidden",
+    },
+    progressFill: {
+      height: "100%",
+      borderRadius: 3,
+      backgroundColor: colors.blue,
+    },
+    progressLabel: { color: colors.textPrimary, fontSize: 12, fontWeight: "700" },
+    scroll: { paddingTop: 16, paddingBottom: 48 },
+    exerciseWrap: { width: "100%" },
+    exerciseCard: {
+      borderRadius: 16,
+      paddingHorizontal: 18,
+      paddingTop: 20,
+      paddingBottom: 22,
+    },
+    exerciseHeading: {
+      color: colors.onInk,
+      fontFamily: "Georgia",
+      fontSize: 19,
+      lineHeight: 26,
+      marginBottom: 6,
+    },
+    exerciseSubtext: { color: colors.textSecondary, fontSize: 13 },
+    interactionBlock: { marginTop: 20, gap: 14, alignItems: "center" },
+    primaryPillButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      paddingHorizontal: 22,
+      paddingVertical: 14,
+      borderRadius: 999,
+      backgroundColor: colors.blue,
+    },
+    primaryPillButtonText: { color: colors.onInk, fontSize: 15, fontWeight: "700" },
+    secondaryPillButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      paddingHorizontal: 18,
+      paddingVertical: 12,
+      borderRadius: 999,
+      backgroundColor: colors.bg,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    secondaryPillButtonText: { color: colors.textPrimary, fontSize: 14, fontWeight: "700" },
+    pillButtonDisabled: { opacity: 0.45 },
+    playRow: { flexDirection: "row", gap: 10, justifyContent: "center" },
+    tapButton: {
+      width: 140,
+      height: 140,
+      borderRadius: 70,
+      backgroundColor: colors.gold,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    tapButtonText: {
+      color: colors.ink,
+      fontSize: 22,
+      fontWeight: "800",
+      letterSpacing: 1.5,
+    },
+    optionsList: { width: "100%", gap: 10, alignItems: "stretch" },
+    questionPrompt: {
+      color: colors.textPrimary,
+      fontSize: 14,
+      fontWeight: "700",
+      textAlign: "center",
+      marginTop: 8,
+    },
+    choiceRow: { flexDirection: "row", gap: 10, justifyContent: "center" },
+    feedbackStat: {
+      color: colors.textPrimary,
+      fontSize: 13,
+      fontWeight: "700",
+      textAlign: "center",
+      marginTop: 4,
+    },
+    optionRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.bg,
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+    },
+    optionRowCompact: { flex: 1, justifyContent: "center", gap: 8 },
+    optionRowSelected: { backgroundColor: colors.blue, borderColor: colors.blue },
+    optionRowCorrect: { backgroundColor: colors.success, borderColor: colors.success },
+    optionRowWrong: { backgroundColor: colors.danger, borderColor: colors.danger },
+    optionText: { color: colors.textPrimary, fontSize: 15, fontWeight: "600" },
+    optionTextSelected: { color: colors.onInk },
+    recordBlock: { alignItems: "center", gap: 14 },
+    recordButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      paddingHorizontal: 22,
+      paddingVertical: 14,
+      borderRadius: 999,
+      backgroundColor: colors.danger,
+    },
+    // Deliberately fixed darker literal for the pressed/active recording
+    // state - the palette doesn't define a distinct "pressed danger" token.
+    recordButtonActive: { backgroundColor: "#7A2323" },
+    recordButtonText: { color: colors.onInk, fontSize: 15, fontWeight: "700" },
+    errorText: { color: colors.danger, fontSize: 12, textAlign: "center" },
+    resultsScroll: {
+      flexGrow: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: 24,
+      paddingVertical: 40,
+    },
+    resultsCard: {
+      width: "100%",
+      maxWidth: 360,
+      alignItems: "center",
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.bg,
+      paddingVertical: 32,
+      paddingHorizontal: 24,
+      gap: 6,
+    },
+    resultsHeading: {
+      marginTop: 12,
+      color: colors.textPrimary,
+      fontFamily: "Georgia",
+      fontSize: 22,
+      fontWeight: "700",
+    },
+    resultsMessage: {
+      color: colors.textSecondary,
+      fontSize: 14,
+      lineHeight: 20,
+      textAlign: "center",
+      marginBottom: 8,
+    },
+    resultsScore: {
+      marginTop: 8,
+      color: colors.textPrimary,
+      fontFamily: "Georgia",
+      fontSize: 44,
+    },
+    resultsSubtext: { color: colors.textSecondary, fontSize: 13, marginBottom: 12 },
+    resultsXpBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 5,
+      paddingHorizontal: 12,
+      paddingVertical: 7,
+      borderRadius: 999,
+      // Decorative light-blue chip background - not covered by the theme
+      // token set, left as a fixed literal (see report).
+      backgroundColor: "#E3F0F7",
+      marginBottom: 20,
+    },
+    resultsXpBadgeText: { color: colors.blue, fontSize: 12, fontWeight: "700" },
+    primaryButton: {
+      width: "100%",
+      borderRadius: 10,
+      backgroundColor: colors.ink,
+      paddingVertical: 14,
+      alignItems: "center",
+      marginBottom: 10,
+    },
+    primaryButtonText: { color: colors.onInk, fontSize: 15, fontWeight: "700" },
+    secondaryButton: {
+      width: "100%",
+      borderRadius: 10,
+      paddingVertical: 14,
+      alignItems: "center",
+    },
+    secondaryButtonText: { color: colors.textSecondary, fontSize: 14, fontWeight: "600" },
+  });

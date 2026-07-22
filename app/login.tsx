@@ -21,6 +21,7 @@ import {
 } from "../store/services/authAPI";
 import { API_HOST } from "../store/services/config/api";
 import type { RootState } from "../store/store";
+import { useThemeColors } from "@/hooks/useThemeColors";
 
 if (Platform.OS !== "web") {
   WebBrowser.maybeCompleteAuthSession();
@@ -49,6 +50,7 @@ function getErrorMessage(error: unknown): string {
 
 export default function Login() {
   const router = useRouter();
+  const colors = useThemeColors();
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
   const isSmallPhone = width < 360;
@@ -158,16 +160,16 @@ export default function Login() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#efece4" }} edges={["top", "left", "right"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }} edges={["top", "left", "right"]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={{ flex: 1, backgroundColor: "#efece4" }}
+        style={{ flex: 1, backgroundColor: colors.bg }}
       >
         {/* Top Bar */}
         <View style={{
           height: 72,
           borderBottomWidth: 1,
-          borderBottomColor: "#d4cfc2",
+          borderBottomColor: colors.border,
           paddingHorizontal: 20,
           flexDirection: "row",
           alignItems: "center",
@@ -176,7 +178,7 @@ export default function Login() {
           <Text style={{
             fontSize: 24,
             letterSpacing: 0.8,
-            color: "#171b24",
+            color: colors.textPrimary,
             fontFamily: Platform.select({ ios: "Times New Roman", android: "serif" }),
             fontWeight: "700",
           }}>AURA</Text>
@@ -187,19 +189,19 @@ export default function Login() {
             marginHorizontal: 10,
             fontSize: 10,
             letterSpacing: 2,
-            color: "#5f5a4f",
+            color: colors.textSecondary,
             fontWeight: "600",
           }}>AURAL TUTOR · OP. 1</Text>
 
           <Pressable style={{
             borderWidth: 1,
-            borderColor: "#bbb4a5",
+            borderColor: colors.border,
             borderRadius: 22,
             paddingVertical: 9,
             paddingHorizontal: 16,
-            backgroundColor: "#f8f6f0",
+            backgroundColor: colors.surfaceAlt,
           }}>
-            <Text style={{ fontWeight: "700", color: "#111827", fontSize: 14 }}>Sign in</Text>
+            <Text style={{ fontWeight: "700", color: colors.textPrimary, fontSize: 14 }}>Sign in</Text>
           </Pressable>
         </View>
 
@@ -215,24 +217,24 @@ export default function Login() {
           marginTop: 22,
           marginHorizontal: 16,
           borderRadius: 16,
-          backgroundColor: "#f3f0e8",
+          backgroundColor: colors.surface,
           borderWidth: 1,
-          borderColor: "#ddd6c8",
+          borderColor: colors.border,
           paddingHorizontal: 18,
           paddingVertical: 20,
         }}>
-          <Text style={{ fontSize: 11, letterSpacing: 2, color: "#c48020", fontWeight: "700", marginBottom: 8 }}>
+          <Text style={{ fontSize: 11, letterSpacing: 2, color: colors.gold, fontWeight: "700", marginBottom: 8 }}>
             CONSERVATORY
           </Text>
           <Text style={{
-            color: "#0f1f36",
+            color: colors.textPrimary,
             fontSize: isSmallPhone ? 34 : isTablet ? 48 : 42,
             lineHeight: isSmallPhone ? 38 : isTablet ? 54 : 46,
             fontFamily: Platform.select({ ios: "Times New Roman", android: "serif" }),
             marginBottom: 8,
           }}>Welcome back.</Text>
           <Text style={{
-            color: "#263247",
+            color: colors.textPrimary,
             fontSize: isSmallPhone ? 14 : isTablet ? 18 : 16,
             lineHeight: isSmallPhone ? 20 : isTablet ? 26 : 22,
             marginBottom: 22,
@@ -250,64 +252,64 @@ export default function Login() {
               justifyContent: "center",
               gap: 12,
               borderWidth: 1,
-              borderColor: "#d7d0c2",
+              borderColor: colors.border,
               borderRadius: 8,
               paddingVertical: 14,
               marginBottom: 18,
-              backgroundColor: "#f8f5ee",
+              backgroundColor: colors.surfaceAlt,
               opacity: pressed ? 0.9 : isSubmitting ? 0.7 : 1,
             })}
           >
             <Text style={{ color: "#d4342f", fontWeight: "700", fontSize: 22 }}>G</Text>
-            <Text style={{ color: "#111827", fontSize: 18, fontWeight: "600" }}>Continue with Google</Text>
+            <Text style={{ color: colors.textPrimary, fontSize: 18, fontWeight: "600" }}>Continue with Google</Text>
           </Pressable>
 
           {/* OR Separator */}
           <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 16 }}>
-            <View style={{ flex: 1, height: 1, backgroundColor: "#d6d0c3" }} />
-            <Text style={{ marginHorizontal: 12, color: "#6d675a", letterSpacing: 2, fontSize: 11, fontWeight: "700" }}>
+            <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
+            <Text style={{ marginHorizontal: 12, color: colors.textSecondary, letterSpacing: 2, fontSize: 11, fontWeight: "700" }}>
               OR
             </Text>
-            <View style={{ flex: 1, height: 1, backgroundColor: "#d6d0c3" }} />
+            <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
           </View>
 
           {/* Form Inputs */}
-          <Text style={{ color: "#101827", fontWeight: "700", fontSize: 18, marginBottom: 8, marginTop: 4 }}>Email</Text>
+          <Text style={{ color: colors.textPrimary, fontWeight: "700", fontSize: 18, marginBottom: 8, marginTop: 4 }}>Email</Text>
           <TextInput
             autoCapitalize="none"
             autoCorrect={false}
             keyboardType="email-address"
             onChangeText={setEmail}
             placeholder="you@conservatory.com"
-            placeholderTextColor="#8f8a7d"
+            placeholderTextColor={colors.textMuted}
             style={{
               borderWidth: 1,
-              borderColor: "#d7d0c2",
+              borderColor: colors.border,
               borderRadius: 8,
-              backgroundColor: "#f6f3ec",
+              backgroundColor: colors.surfaceAlt,
               paddingHorizontal: 14,
               paddingVertical: 12,
-              color: "#111827",
+              color: colors.textPrimary,
               fontSize: 16,
               marginBottom: 14,
             }}
             value={email}
           />
 
-          <Text style={{ color: "#101827", fontWeight: "700", fontSize: 18, marginBottom: 8, marginTop: 4 }}>Password</Text>
+          <Text style={{ color: colors.textPrimary, fontWeight: "700", fontSize: 18, marginBottom: 8, marginTop: 4 }}>Password</Text>
           <TextInput
             onChangeText={setPassword}
             placeholder="Enter your password"
-            placeholderTextColor="#8f8a7d"
+            placeholderTextColor={colors.textMuted}
             secureTextEntry
             style={{
               borderWidth: 1,
-              borderColor: "#d7d0c2",
+              borderColor: colors.border,
               borderRadius: 8,
-              backgroundColor: "#f6f3ec",
+              backgroundColor: colors.surfaceAlt,
               paddingHorizontal: 14,
               paddingVertical: 12,
-              color: "#111827",
+              color: colors.textPrimary,
               fontSize: 16,
               marginBottom: 14,
             }}
@@ -321,36 +323,36 @@ export default function Login() {
             style={({ pressed }) => ({
               marginTop: 2,
               borderRadius: 8,
-              backgroundColor: "#0f1b2c",
+              backgroundColor: colors.ink,
               paddingVertical: 14,
               alignItems: "center",
               opacity: pressed ? 0.9 : isSubmitting ? 0.8 : 1,
             })}
           >
             {isSubmitting ? (
-              <ActivityIndicator color="#ffffff" />
+              <ActivityIndicator color={colors.onInk} />
             ) : (
-              <Text style={{ color: "#ffffff", fontSize: 17, fontWeight: "700" }}>Sign in</Text>
+              <Text style={{ color: colors.onInk, fontSize: 17, fontWeight: "700" }}>Sign in</Text>
             )}
           </Pressable>
 
           {/* Error Message */}
           {errorMessage ? (
-            <Text style={{ marginTop: 12, textAlign: "center", color: "#9b1c1c", fontSize: 13, fontWeight: "600" }}>
+            <Text style={{ marginTop: 12, textAlign: "center", color: colors.danger, fontSize: 13, fontWeight: "600" }}>
               {errorMessage}
             </Text>
           ) : null}
 
           {/* Footer Links */}
           <Pressable>
-            <Text style={{ marginTop: 16, textAlign: "center", color: "#565e6b", fontSize: 14 }}>
+            <Text style={{ marginTop: 16, textAlign: "center", color: colors.textSecondary, fontSize: 14 }}>
               Forgot your password?
             </Text>
           </Pressable>
 
           <Pressable onPress={handleCreateAccount}>
-            <Text style={{ marginTop: 12, textAlign: "center", color: "#2f3848", fontSize: 18 }}>
-              New here? <Text style={{ color: "#0f1b2c", fontWeight: "700" }}>Create an account</Text>
+            <Text style={{ marginTop: 12, textAlign: "center", color: colors.textPrimary, fontSize: 18 }}>
+              New here? <Text style={{ color: colors.textPrimary, fontWeight: "700" }}>Create an account</Text>
             </Text>
           </Pressable>
         </View>

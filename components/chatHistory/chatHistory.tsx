@@ -1,5 +1,7 @@
 import type { TutorConversationSummary } from "@/store/services/tutorAPI";
-import React from "react";
+import { useThemeColors } from "@/hooks/useThemeColors";
+import type { ThemeColors } from "@/constants/Colors";
+import React, { useMemo } from "react";
 import {
     ActivityIndicator,
     Animated,
@@ -28,6 +30,7 @@ type ConversationRowProps = {
   isDeleting: boolean;
   onSelectConversation: (conversationId: string) => void;
   onDeleteConversation: (conversationId: string) => void;
+  styles: ReturnType<typeof createStyles>;
 };
 
 const formatTimestamp = (isoTime: string) => {
@@ -52,6 +55,7 @@ function ConversationRow({
   isDeleting,
   onSelectConversation,
   onDeleteConversation,
+  styles,
 }: ConversationRowProps) {
   const translateX = React.useRef(new Animated.Value(0)).current;
 
@@ -145,6 +149,9 @@ export default function ChatHistory({
   onSelectConversation,
   onDeleteConversation,
 }: ChatHistoryProps) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
@@ -185,7 +192,7 @@ export default function ChatHistory({
       >
         {isLoading ? (
           <View style={styles.centerState}>
-            <ActivityIndicator color="#1D2430" />
+            <ActivityIndicator color={colors.textSecondary} />
             <Text style={styles.stateText}>Loading conversations...</Text>
           </View>
         ) : conversations.length === 0 ? (
@@ -206,6 +213,7 @@ export default function ChatHistory({
                 isDeleting={isDeleting}
                 onSelectConversation={onSelectConversation}
                 onDeleteConversation={onDeleteConversation}
+                styles={styles}
               />
             );
           })
@@ -215,12 +223,13 @@ export default function ChatHistory({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#EFEBE3",
+    backgroundColor: colors.surface,
     borderRightWidth: 1,
-    borderRightColor: "#D6CEBF",
+    borderRightColor: colors.border,
     paddingHorizontal: 12,
     paddingTop: 12,
   },
@@ -231,13 +240,13 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   title: {
-    color: "#1F1D18",
+    color: colors.textPrimary,
     fontFamily: "Georgia",
     fontSize: 18,
     lineHeight: 34,
   },
   subtitle: {
-    color: "#5A6675",
+    color: colors.textSecondary,
     fontSize: 14,
     lineHeight: 14,
   },
@@ -251,14 +260,14 @@ const styles = StyleSheet.create({
   closeText: {
     fontSize: 30,
     lineHeight: 30,
-    color: "#45413A",
+    color: colors.textSecondary,
   },
   newChatButton: {
     marginTop: 4,
     marginBottom: 14,
     height: 36,
     borderRadius: 6,
-    backgroundColor: "#0F1A2B",
+    backgroundColor: colors.ink,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -266,7 +275,7 @@ const styles = StyleSheet.create({
     opacity: 0.82,
   },
   newChatText: {
-    color: "#F6F6F5",
+    color: colors.onInk,
     fontWeight: "600",
     fontSize: 12,
   },
@@ -292,17 +301,17 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   chatRowActive: {
-    backgroundColor: "#E1D9C9",
+    backgroundColor: colors.surfaceAlt,
   },
   chatTitle: {
-    color: "#26231D",
+    color: colors.textPrimary,
     fontSize: 14,
     lineHeight: 18,
     fontWeight: "600",
   },
   chatMeta: {
     marginTop: 2,
-    color: "#677383",
+    color: colors.textSecondary,
     fontSize: 12,
     lineHeight: 16,
   },
@@ -313,8 +322,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#C9BDAA",
-    backgroundColor: "#F1EBDF",
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceAlt,
   },
   deleteButtonDisabled: {
     opacity: 0.6,
@@ -322,7 +331,7 @@ const styles = StyleSheet.create({
   deleteText: {
     fontSize: 12,
     lineHeight: 12,
-    color: "#5F4A3D",
+    color: colors.textMuted,
     fontWeight: "700",
   },
   centerState: {
@@ -331,10 +340,10 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   stateText: {
-    color: "#5A6675",
+    color: colors.textSecondary,
     fontSize: 13,
   },
   pressed: {
     opacity: 0.75,
   },
-});
+  });

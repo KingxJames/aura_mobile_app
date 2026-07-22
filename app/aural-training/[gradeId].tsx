@@ -1,6 +1,8 @@
 import { getCompletedAuralModules } from "@/lib/auralModuleProgress";
 import type { AuralModuleType } from "@/store/services/auralTrainingAPI";
 import { useGetCurriculumQuery } from "@/store/services/curriculumAPI";
+import type { ThemeColors } from "@/constants/Colors";
+import { useThemeColors } from "@/hooks/useThemeColors";
 import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -85,12 +87,16 @@ function AuralModuleCard({
   index,
   isTablet,
   onPress,
+  colors,
+  styles,
 }: {
   moduleDef: AuralModuleDef;
   status: NodeStatus;
   index: number;
   isTablet: boolean;
   onPress: () => void;
+  colors: ThemeColors;
+  styles: ReturnType<typeof createStyles>;
 }) {
   const Icon = moduleDef.icon;
   const badgeSize = isTablet ? 56 : 48;
@@ -98,10 +104,10 @@ function AuralModuleCard({
 
   const badgeColors =
     status === "completed"
-      ? (["#2F7A4F", "#1F5A38"] as const)
+      ? ([colors.success, colors.success] as const)
       : status === "current"
-        ? (["#178CCF", "#0F5E8C"] as const)
-        : (["#DCD0BA", "#DCD0BA"] as const);
+        ? ([colors.blue, colors.blue] as const)
+        : ([colors.border, colors.border] as const);
 
   return (
     <Animated.View
@@ -121,11 +127,11 @@ function AuralModuleCard({
           ]}
         >
           {status === "locked" ? (
-            <Lock size={iconSize - 2} color="#9C917C" />
+            <Lock size={iconSize - 2} color={colors.textMuted} />
           ) : status === "completed" ? (
-            <Check size={iconSize} color="#F5F1E8" />
+            <Check size={iconSize} color={colors.onInk} />
           ) : (
-            <Icon size={iconSize} color="#F5F1E8" />
+            <Icon size={iconSize} color={colors.onInk} />
           )}
         </LinearGradient>
         <View style={styles.connector} />
@@ -158,7 +164,7 @@ function AuralModuleCard({
 
         {status === "locked" ? (
           <View style={styles.lockedFooter}>
-            <Lock size={12} color="#9C917C" />
+            <Lock size={12} color={colors.textMuted} />
             <Text style={styles.lockedFooterText}>
               Complete the lesson above to unlock
             </Text>
@@ -171,13 +177,13 @@ function AuralModuleCard({
               accessibilityRole="button"
               accessibilityLabel={`Replay ${moduleDef.label}`}
             >
-              <Repeat size={13} color="#F5F1E8" />
+              <Repeat size={13} color={colors.onInk} />
               <Text style={styles.replayButtonText}>
                 Replay · +{XP_PER_MODULE} XP
               </Text>
             </Pressable>
             <View style={styles.doneBadge}>
-              <Check size={13} color="#1F5A38" />
+              <Check size={13} color={colors.success} />
               <Text style={styles.doneBadgeText}>Done</Text>
             </View>
           </View>
@@ -203,6 +209,8 @@ export default function AuralGradePathScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   const isTablet = width >= 768;
   const contentMaxWidth = isTablet ? 760 : 680;
@@ -276,7 +284,7 @@ export default function AuralGradePathScreen() {
   if (isLoading) {
     return (
       <View style={styles.centerScreen}>
-        <ActivityIndicator color="#178CCF" size="large" />
+        <ActivityIndicator color={colors.blue} size="large" />
         <Text style={styles.centerStateText}>Loading grade…</Text>
       </View>
     );
@@ -305,7 +313,7 @@ export default function AuralGradePathScreen() {
           accessibilityRole="button"
           accessibilityLabel="Back to Aural Training"
         >
-          <ArrowLeft size={15} color="#8C8270" />
+          <ArrowLeft size={15} color={colors.textSecondary} />
           <Text style={styles.breadcrumbText}>Aural Training</Text>
         </Pressable>
         <View style={styles.centerScreen}>
@@ -335,7 +343,7 @@ export default function AuralGradePathScreen() {
           accessibilityRole="button"
           accessibilityLabel="Back to Aural Training"
         >
-          <ArrowLeft size={15} color="#8C8270" />
+          <ArrowLeft size={15} color={colors.textSecondary} />
           <Text style={styles.breadcrumbText}>Aural Training</Text>
         </Pressable>
 
@@ -359,7 +367,7 @@ export default function AuralGradePathScreen() {
           <View style={styles.progressTopRow}>
             <Text style={styles.progressLabel}>PROGRESS</Text>
             <View style={styles.xpPill}>
-              <Flame size={12} color="#178CCF" fill="#178CCF" />
+              <Flame size={12} color={colors.blue} fill={colors.blue} />
               <Text style={styles.xpPillText}>{xp} XP</Text>
             </View>
           </View>
@@ -367,7 +375,7 @@ export default function AuralGradePathScreen() {
           <View style={styles.progressTrack}>
             <Animated.View style={[styles.progressTrackFillWrap, progressBarStyle]}>
               <LinearGradient
-                colors={["#178CCF", "#16253A"] as const}
+                colors={[colors.blue, colors.ink] as const}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.progressFill}
@@ -389,8 +397,8 @@ export default function AuralGradePathScreen() {
               <Star
                 key={i}
                 size={18}
-                color={i < filledStars ? "#178CCF" : "#D9CBB6"}
-                fill={i < filledStars ? "#178CCF" : "transparent"}
+                color={i < filledStars ? colors.blue : colors.border}
+                fill={i < filledStars ? colors.blue : "transparent"}
               />
             ))}
           </View>
@@ -411,6 +419,8 @@ export default function AuralGradePathScreen() {
               status={statusFor(index)}
               isTablet={isTablet}
               onPress={() => handleOpenModule(moduleDef)}
+              colors={colors}
+              styles={styles}
             />
           ))}
         </View>
@@ -419,187 +429,193 @@ export default function AuralGradePathScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#F5EFE3" },
-  centerScreen: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-    backgroundColor: "#F5EFE3",
-  },
-  centerStateText: { color: "#2E425E", fontSize: 14, textAlign: "center" },
-  retryButton: {
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: "#16253A",
-  },
-  retryButtonText: { color: "#F5F1E8", fontSize: 13, fontWeight: "700" },
-  scrollContent: { paddingTop: 12, alignItems: "center" },
-  breadcrumb: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    alignSelf: "flex-start",
-    marginBottom: 18,
-  },
-  breadcrumbText: { color: "#8C8270", fontSize: 13, fontWeight: "600" },
-  headingBlock: { width: "100%", marginBottom: 22 },
-  levelPill: {
-    alignSelf: "flex-start",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-    backgroundColor: "#DCEEF9",
-    marginBottom: 8,
-  },
-  levelPillText: {
-    color: "#0F5E8C",
-    fontSize: 10,
-    fontWeight: "700",
-    letterSpacing: 1,
-  },
-  gradeHeading: {
-    color: "#101A2A",
-    fontFamily: "Georgia",
-    fontWeight: "700",
-  },
-  gradeTagline: {
-    color: "#2E425E",
-    fontStyle: "italic",
-    marginTop: 4,
-    lineHeight: 20,
-  },
-  progressSection: {
-    width: "100%",
-    marginBottom: 28,
-    padding: 16,
-    borderRadius: 16,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#EAE3D5",
-  },
-  progressTopRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 10,
-  },
-  progressLabel: { color: "#8C8270", fontSize: 11, fontWeight: "700", letterSpacing: 1.2 },
-  xpPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-    backgroundColor: "#DCEEF9",
-  },
-  xpPillText: { color: "#0F5E8C", fontSize: 11, fontWeight: "700" },
-  progressTrack: {
-    height: 10,
-    borderRadius: 999,
-    backgroundColor: "#EFE6D7",
-    overflow: "hidden",
-  },
-  progressTrackFillWrap: { height: "100%" },
-  progressFill: { flex: 1 },
-  progressStatsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 8,
-  },
-  progressStatsText: { color: "#2E425E", fontSize: 12, fontWeight: "600" },
-  starsRow: { flexDirection: "row", gap: 6, marginTop: 12 },
-  questPill: {
-    alignSelf: "flex-start",
-    marginTop: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: "#16253A",
-  },
-  questPillText: {
-    color: "#F5F1E8",
-    fontSize: 10,
-    fontWeight: "700",
-    letterSpacing: 0.8,
-  },
-  path: { width: "100%" },
-  cardRow: { flexDirection: "row", gap: 12 },
-  railColumn: { alignItems: "center", width: 56 },
-  badge: {
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 3,
-    borderColor: "rgba(255,255,255,0.35)",
-  },
-  connector: {
-    flex: 1,
-    width: 2,
-    minHeight: 24,
-    marginVertical: 4,
-    borderRadius: 1,
-    borderStyle: "dashed",
-    borderWidth: 1,
-    borderColor: "#D9CBB6",
-  },
-  card: {
-    flex: 1,
-    marginBottom: 20,
-    padding: 16,
-    borderRadius: 16,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#EAE3D5",
-  },
-  cardLocked: { backgroundColor: "#F7F3EA", borderColor: "#E7DFCE" },
-  cardCurrent: { borderColor: "#178CCF", borderWidth: 1.5 },
-  cardTitle: {
-    color: "#101A2A",
-    fontFamily: "Georgia",
-    fontSize: 16,
-    fontWeight: "700",
-    marginBottom: 8,
-  },
-  cardTitleLocked: { color: "#9C917C" },
-  cardDescription: {
-    color: "#5B5240",
-    fontSize: 12,
-    lineHeight: 17,
-    marginBottom: 12,
-  },
-  lockedFooter: { flexDirection: "row", alignItems: "center", gap: 6 },
-  lockedFooterText: { color: "#9C917C", fontSize: 11, fontStyle: "italic" },
-  cardFooterRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  replayButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    backgroundColor: "#16253A",
-  },
-  replayButtonText: { color: "#F5F1E8", fontSize: 12, fontWeight: "700" },
-  doneBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 10,
-    backgroundColor: "#E3F0E6",
-  },
-  doneBadgeText: { color: "#1F5A38", fontSize: 12, fontWeight: "700" },
-  startButton: {
-    alignSelf: "flex-start",
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 10,
-    backgroundColor: "#178CCF",
-  },
-  startButtonText: { color: "#F5F1E8", fontSize: 12, fontWeight: "700" },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    screen: { flex: 1, backgroundColor: colors.bg },
+    centerScreen: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 12,
+      backgroundColor: colors.bg,
+    },
+    centerStateText: { color: colors.textPrimary, fontSize: 14, textAlign: "center" },
+    retryButton: {
+      paddingHorizontal: 18,
+      paddingVertical: 10,
+      borderRadius: 10,
+      backgroundColor: colors.ink,
+    },
+    retryButtonText: { color: colors.onInk, fontSize: 13, fontWeight: "700" },
+    scrollContent: { paddingTop: 12, alignItems: "center" },
+    breadcrumb: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      alignSelf: "flex-start",
+      marginBottom: 18,
+    },
+    breadcrumbText: { color: colors.textSecondary, fontSize: 13, fontWeight: "600" },
+    headingBlock: { width: "100%", marginBottom: 22 },
+    levelPill: {
+      alignSelf: "flex-start",
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 999,
+      // Decorative light-blue chip background - not covered by the theme
+      // token set, left as a fixed literal (see report).
+      backgroundColor: "#DCEEF9",
+      marginBottom: 8,
+    },
+    levelPillText: {
+      color: colors.blue,
+      fontSize: 10,
+      fontWeight: "700",
+      letterSpacing: 1,
+    },
+    gradeHeading: {
+      color: colors.textPrimary,
+      fontFamily: "Georgia",
+      fontWeight: "700",
+    },
+    gradeTagline: {
+      color: colors.textPrimary,
+      fontStyle: "italic",
+      marginTop: 4,
+      lineHeight: 20,
+    },
+    progressSection: {
+      width: "100%",
+      marginBottom: 28,
+      padding: 16,
+      borderRadius: 16,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.surfaceAlt,
+    },
+    progressTopRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 10,
+    },
+    progressLabel: { color: colors.textSecondary, fontSize: 11, fontWeight: "700", letterSpacing: 1.2 },
+    xpPill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 999,
+      // Same decorative light-blue chip as levelPill above - fixed literal.
+      backgroundColor: "#DCEEF9",
+    },
+    xpPillText: { color: colors.blue, fontSize: 11, fontWeight: "700" },
+    progressTrack: {
+      height: 10,
+      borderRadius: 999,
+      backgroundColor: colors.border,
+      overflow: "hidden",
+    },
+    progressTrackFillWrap: { height: "100%" },
+    progressFill: { flex: 1 },
+    progressStatsRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginTop: 8,
+    },
+    progressStatsText: { color: colors.textPrimary, fontSize: 12, fontWeight: "600" },
+    starsRow: { flexDirection: "row", gap: 6, marginTop: 12 },
+    questPill: {
+      alignSelf: "flex-start",
+      marginTop: 14,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 999,
+      backgroundColor: colors.ink,
+    },
+    questPillText: {
+      color: colors.onInk,
+      fontSize: 10,
+      fontWeight: "700",
+      letterSpacing: 0.8,
+    },
+    path: { width: "100%" },
+    cardRow: { flexDirection: "row", gap: 12 },
+    railColumn: { alignItems: "center", width: 56 },
+    badge: {
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 3,
+      borderColor: "rgba(255,255,255,0.35)",
+    },
+    connector: {
+      flex: 1,
+      width: 2,
+      minHeight: 24,
+      marginVertical: 4,
+      borderRadius: 1,
+      borderStyle: "dashed",
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    card: {
+      flex: 1,
+      marginBottom: 20,
+      padding: 16,
+      borderRadius: 16,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.surfaceAlt,
+    },
+    cardLocked: { backgroundColor: colors.surfaceAlt, borderColor: colors.border },
+    cardCurrent: { borderColor: colors.blue, borderWidth: 1.5 },
+    cardTitle: {
+      color: colors.textPrimary,
+      fontFamily: "Georgia",
+      fontSize: 16,
+      fontWeight: "700",
+      marginBottom: 8,
+    },
+    cardTitleLocked: { color: colors.textMuted },
+    cardDescription: {
+      color: colors.textMuted,
+      fontSize: 12,
+      lineHeight: 17,
+      marginBottom: 12,
+    },
+    lockedFooter: { flexDirection: "row", alignItems: "center", gap: 6 },
+    lockedFooterText: { color: colors.textMuted, fontSize: 11, fontStyle: "italic" },
+    cardFooterRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+    replayButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 10,
+      backgroundColor: colors.ink,
+    },
+    replayButtonText: { color: colors.onInk, fontSize: 12, fontWeight: "700" },
+    doneBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+      borderRadius: 10,
+      // Decorative light-green "done" chip background - not covered by the
+      // theme token set, left as a fixed literal (see report).
+      backgroundColor: "#E3F0E6",
+    },
+    doneBadgeText: { color: colors.success, fontSize: 12, fontWeight: "700" },
+    startButton: {
+      alignSelf: "flex-start",
+      paddingHorizontal: 14,
+      paddingVertical: 9,
+      borderRadius: 10,
+      backgroundColor: colors.blue,
+    },
+    startButtonText: { color: colors.onInk, fontSize: 12, fontWeight: "700" },
+  });

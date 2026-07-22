@@ -15,6 +15,8 @@ import PlatformIcon from "../../components/platformIcon/platformIcon";
 import UserDropdownMenu from "../../components/userDropdownMenu/userDropdownMenu";
 import { API_HOST } from "../../store/services/config/api";
 import type { RootState } from "../../store/store";
+import { useThemeColors } from "@/hooks/useThemeColors";
+import type { ThemeColors } from "@/constants/Colors";
 
 export const unstable_settings = {
   initialRouteName: "grades",
@@ -23,6 +25,8 @@ export const unstable_settings = {
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const user = useSelector((state: RootState) => state.auth.user);
   const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -89,12 +93,12 @@ export default function TabLayout() {
     <>
       <Tabs
         screenOptions={{
-          tabBarActiveTintColor: "#D79A1B",
-          tabBarInactiveTintColor: "#415067",
+          tabBarActiveTintColor: colors.gold,
+          tabBarInactiveTintColor: colors.textSecondary,
           tabBarShowLabel: true,
           tabBarLabelStyle: styles.tabBarLabel,
           tabBarItemStyle: styles.tabBarItem,
-          tabBarActiveBackgroundColor: "#101E2F",
+          tabBarActiveBackgroundColor: colors.ink,
           headerTransparent: true,
           headerBackground: () => (
             <View style={styles.headerBackground}>
@@ -259,112 +263,113 @@ export default function TabLayout() {
   );
 }
 
-const styles = StyleSheet.create({
-  tabBar: {
-    backgroundColor: "#EFE6D7",
-    borderTopColor: "#D9CBB6",
-    borderTopWidth: 1,
-    height: 64,
-    paddingTop: 6,
-    elevation: 8,
-    shadowColor: "#6C5B42",
-    shadowOpacity: 0.16,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: -2 },
-  },
-  tabBarTablet: {
-    height: 72,
-    paddingTop: 8,
-  },
-  scene: {
-    backgroundColor: "#F5EFE3",
-  },
-  tabBarItem: {
-    marginHorizontal: 4,
-    marginVertical: 6,
-    borderRadius: 16,
-    justifyContent: "center",
-  },
-  tabBarLabel: {
-    fontSize: 11,
-    lineHeight: 13,
-    fontWeight: "700",
-    marginTop: 2,
-    letterSpacing: 0.2,
-  },
-  header: {
-    elevation: 0,
-    shadowOpacity: 0,
-    height: 86,
-  },
-  headerBackground: {
-    flex: 1,
-    backgroundColor: "#F5EFE3",
-    justifyContent: "flex-end",
-  },
-  headerBackgroundInner: {
-    height: 1,
-    backgroundColor: "#D9CBB6",
-  },
-  headerBrand: {
-    marginLeft: 14,
-    fontSize: 30,
-    lineHeight: 34,
-    fontWeight: "800",
-    color: "#1B1A17",
-    letterSpacing: 0.6,
-    fontFamily: "Georgia",
-  },
-  headerActions: {
-    marginRight: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  iconCircleButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#CFC5B5",
-    backgroundColor: "#F5EFE3",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  iconCirclePressed: {
-    opacity: 0.75,
-  },
-  avatarButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#178CCF",
-    overflow: "hidden",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarButtonPressed: {
-    opacity: 0.8,
-  },
-  avatarText: {
-    color: "#FFFFFF",
-    fontWeight: "700",
-    fontSize: 18,
-  },
-  avatarImage: {
-    width: "100%",
-    height: "100%",
-  },
-  menuBackdrop: {
-    flex: 1,
-  },
-  menuContainer: {
-    position: "absolute",
-    width: 248,
-    shadowColor: "#000000",
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    tabBar: {
+      backgroundColor: colors.surface,
+      borderTopColor: colors.border,
+      borderTopWidth: 1,
+      height: 64,
+      paddingTop: 6,
+      elevation: 8,
+      shadowColor: "#6C5B42",
+      shadowOpacity: 0.16,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: -2 },
+    },
+    tabBarTablet: {
+      height: 72,
+      paddingTop: 8,
+    },
+    scene: {
+      backgroundColor: colors.bg,
+    },
+    tabBarItem: {
+      marginHorizontal: 4,
+      marginVertical: 6,
+      borderRadius: 16,
+      justifyContent: "center",
+    },
+    tabBarLabel: {
+      fontSize: 11,
+      lineHeight: 13,
+      fontWeight: "700",
+      marginTop: 2,
+      letterSpacing: 0.2,
+    },
+    header: {
+      elevation: 0,
+      shadowOpacity: 0,
+      height: 86,
+    },
+    headerBackground: {
+      flex: 1,
+      backgroundColor: colors.bg,
+      justifyContent: "flex-end",
+    },
+    headerBackgroundInner: {
+      height: 1,
+      backgroundColor: colors.border,
+    },
+    headerBrand: {
+      marginLeft: 14,
+      fontSize: 30,
+      lineHeight: 34,
+      fontWeight: "800",
+      color: colors.textPrimary,
+      letterSpacing: 0.6,
+      fontFamily: "Georgia",
+    },
+    headerActions: {
+      marginRight: 14,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+    },
+    iconCircleButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.bg,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    iconCirclePressed: {
+      opacity: 0.75,
+    },
+    avatarButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: colors.blue,
+      overflow: "hidden",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    avatarButtonPressed: {
+      opacity: 0.8,
+    },
+    avatarText: {
+      color: colors.onInk,
+      fontWeight: "700",
+      fontSize: 18,
+    },
+    avatarImage: {
+      width: "100%",
+      height: "100%",
+    },
+    menuBackdrop: {
+      flex: 1,
+    },
+    menuContainer: {
+      position: "absolute",
+      width: 248,
+      shadowColor: "#000000",
+      shadowOpacity: 0.08,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 4,
+    },
+  });

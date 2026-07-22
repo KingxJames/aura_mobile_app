@@ -9,6 +9,8 @@ import {
     useGetCurriculumQuery,
     useGetTopicHelpMutation,
 } from "@/store/services/curriculumAPI";
+import { useThemeColors } from "@/hooks/useThemeColors";
+import type { ThemeColors } from "@/constants/Colors";
 import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -99,6 +101,8 @@ function TopicCard({
   isTablet,
   onPress,
   onAskAura,
+  colors,
+  styles,
 }: {
   group: TopicGroup;
   status: NodeStatus;
@@ -108,6 +112,8 @@ function TopicCard({
   isTablet: boolean;
   onPress: () => void;
   onAskAura: () => void;
+  colors: ThemeColors;
+  styles: ReturnType<typeof createStyles>;
 }) {
   const Icon = TOPIC_ICONS[group.key] ?? Star;
   const badgeSize = isTablet ? 56 : 48;
@@ -115,10 +121,10 @@ function TopicCard({
 
   const badgeColors =
     status === "completed"
-      ? (["#2F7A4F", "#1F5A38"] as const)
+      ? ([colors.success, colors.success] as const)
       : status === "current"
-        ? (["#D79A1B", "#B97D12"] as const)
-        : (["#DCD0BA", "#DCD0BA"] as const);
+        ? ([colors.gold, "#B97D12"] as const)
+        : ([colors.border, colors.border] as const);
 
   return (
     <Animated.View
@@ -138,11 +144,11 @@ function TopicCard({
           ]}
         >
           {status === "locked" ? (
-            <Lock size={iconSize - 2} color="#9C917C" />
+            <Lock size={iconSize - 2} color={colors.textMuted} />
           ) : status === "completed" ? (
-            <Check size={iconSize} color="#F5F1E8" />
+            <Check size={iconSize} color={colors.onInk} />
           ) : (
-            <Icon size={iconSize} color="#F5F1E8" />
+            <Icon size={iconSize} color={colors.onInk} />
           )}
         </LinearGradient>
         <View style={styles.connector} />
@@ -184,7 +190,7 @@ function TopicCard({
               accessibilityRole="button"
               accessibilityLabel={`Ask Aura for help with ${group.label}`}
             >
-              <Sparkles size={11} color="#D79A1B" />
+              <Sparkles size={11} color={colors.gold} />
               <Text style={styles.askAuraPillText}>Ask Aura</Text>
             </Pressable>
           )}
@@ -192,7 +198,7 @@ function TopicCard({
 
         {status === "locked" ? (
           <View style={styles.lockedFooter}>
-            <Lock size={12} color="#9C917C" />
+            <Lock size={12} color={colors.textMuted} />
             <Text style={styles.lockedFooterText}>
               Complete the lesson above to unlock
             </Text>
@@ -205,13 +211,13 @@ function TopicCard({
               accessibilityRole="button"
               accessibilityLabel={`Replay ${group.label}`}
             >
-              <Repeat size={13} color="#F5F1E8" />
+              <Repeat size={13} color={colors.onInk} />
               <Text style={styles.replayButtonText}>
                 Replay · +{XP_PER_TOPIC} XP
               </Text>
             </Pressable>
             <View style={styles.doneBadge}>
-              <Check size={13} color="#1F5A38" />
+              <Check size={13} color={colors.success} />
               <Text style={styles.doneBadgeText}>Done</Text>
             </View>
           </View>
@@ -237,11 +243,15 @@ function FinalReviewCard({
   questionCount,
   index,
   onPress,
+  colors,
+  styles,
 }: {
   unlocked: boolean;
   questionCount: number;
   index: number;
   onPress: () => void;
+  colors: ThemeColors;
+  styles: ReturnType<typeof createStyles>;
 }) {
   return (
     <Animated.View
@@ -251,9 +261,9 @@ function FinalReviewCard({
       <View style={styles.railColumn}>
         <View style={[styles.badge, unlocked ? styles.bossBadge : styles.bossBadgeLocked]}>
           {unlocked ? (
-            <Trophy size={22} color="#F5F1E8" />
+            <Trophy size={22} color={colors.onInk} />
           ) : (
-            <Lock size={20} color="#9C917C" />
+            <Lock size={20} color={colors.textMuted} />
           )}
         </View>
       </View>
@@ -268,8 +278,8 @@ function FinalReviewCard({
         <LinearGradient
           colors={
             unlocked
-              ? (["#16253A", "#3B2A17"] as const)
-              : (["#DCD0BA", "#CBBE9F"] as const)
+              ? ([colors.ink, "#3B2A17"] as const)
+              : ([colors.border, "#CBBE9F"] as const)
           }
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
@@ -290,7 +300,7 @@ function FinalReviewCard({
           </Text>
           {unlocked && (
             <View style={styles.bossButton}>
-              <Trophy size={14} color="#16253A" />
+              <Trophy size={14} color={colors.textPrimary} />
               <Text style={styles.bossButtonText}>Challenge the Examiner</Text>
             </View>
           )}
@@ -305,6 +315,8 @@ export default function GradeTopicsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   const isTablet = width >= 768;
   const isNarrowPhone = width < 390;
@@ -438,7 +450,7 @@ export default function GradeTopicsScreen() {
   if (isLoading) {
     return (
       <View style={styles.centerScreen}>
-        <ActivityIndicator color="#D79A1B" size="large" />
+        <ActivityIndicator color={colors.gold} size="large" />
         <Text style={styles.centerStateText}>Loading topics…</Text>
       </View>
     );
@@ -475,7 +487,7 @@ export default function GradeTopicsScreen() {
           accessibilityRole="button"
           accessibilityLabel="Back to all grades"
         >
-          <ArrowLeft size={15} color="#8C8270" />
+          <ArrowLeft size={15} color={colors.textSecondary} />
           <Text style={styles.breadcrumbText}>All grades</Text>
         </Pressable>
 
@@ -502,7 +514,7 @@ export default function GradeTopicsScreen() {
           <View style={styles.progressTopRow}>
             <Text style={styles.progressLabel}>PROGRESS</Text>
             <View style={styles.xpPill}>
-              <Flame size={12} color="#D79A1B" fill="#D79A1B" />
+              <Flame size={12} color={colors.gold} fill={colors.gold} />
               <Text style={styles.xpPillText}>{xp} XP</Text>
             </View>
           </View>
@@ -510,7 +522,7 @@ export default function GradeTopicsScreen() {
           <View style={styles.progressTrack}>
             <Animated.View style={[styles.progressTrackFillWrap, progressBarStyle]}>
               <LinearGradient
-                colors={["#D79A1B", "#16253A"] as const}
+                colors={[colors.gold, colors.ink] as const}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.progressFill}
@@ -532,8 +544,8 @@ export default function GradeTopicsScreen() {
               <Star
                 key={i}
                 size={18}
-                color={i < filledStars ? "#D79A1B" : "#D9CBB6"}
-                fill={i < filledStars ? "#D79A1B" : "transparent"}
+                color={i < filledStars ? colors.gold : colors.border}
+                fill={i < filledStars ? colors.gold : "transparent"}
               />
             ))}
           </View>
@@ -557,6 +569,8 @@ export default function GradeTopicsScreen() {
               isTablet={isTablet}
               onPress={() => handleOpenTopic(group)}
               onAskAura={() => handleAskAura(group)}
+              colors={colors}
+              styles={styles}
             />
           ))}
 
@@ -565,6 +579,8 @@ export default function GradeTopicsScreen() {
             questionCount={reviewQuestionCount}
             index={topics.length}
             onPress={handleStartFinalReview}
+            colors={colors}
+            styles={styles}
           />
         </View>
       </ScrollView>
@@ -587,14 +603,14 @@ export default function GradeTopicsScreen() {
             onPress={(event) => event.stopPropagation()}
           >
             <View style={styles.modalHeader}>
-              <Sparkles size={16} color="#D79A1B" />
+              <Sparkles size={16} color={colors.gold} />
               <Text style={styles.modalHeaderText}>
                 Aura on {helpModal?.topicLabel}
               </Text>
             </View>
             {helpModal?.loading ? (
               <ActivityIndicator
-                color="#D79A1B"
+                color={colors.gold}
                 size="small"
                 style={styles.modalLoader}
               />
@@ -614,30 +630,31 @@ export default function GradeTopicsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#F5EFE3",
+    backgroundColor: colors.bg,
   },
   centerScreen: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     gap: 12,
-    backgroundColor: "#F5EFE3",
+    backgroundColor: colors.bg,
   },
   centerStateText: {
-    color: "#2E425E",
+    color: colors.textPrimary,
     fontSize: 14,
   },
   retryButton: {
     paddingHorizontal: 18,
     paddingVertical: 10,
     borderRadius: 10,
-    backgroundColor: "#16253A",
+    backgroundColor: colors.ink,
   },
   retryButtonText: {
-    color: "#F5F1E8",
+    color: colors.onInk,
     fontSize: 13,
     fontWeight: "700",
   },
@@ -653,7 +670,7 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   breadcrumbText: {
-    color: "#8C8270",
+    color: colors.textSecondary,
     fontSize: 13,
     fontWeight: "600",
   },
@@ -676,12 +693,12 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   gradeHeading: {
-    color: "#101A2A",
+    color: colors.textPrimary,
     fontFamily: "Georgia",
     fontWeight: "700",
   },
   gradeTagline: {
-    color: "#2E425E",
+    color: colors.textPrimary,
     fontStyle: "italic",
     marginTop: 4,
     lineHeight: 20,
@@ -691,9 +708,9 @@ const styles = StyleSheet.create({
     marginBottom: 28,
     padding: 16,
     borderRadius: 16,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: "#EAE3D5",
+    borderColor: colors.surfaceAlt,
   },
   progressTopRow: {
     flexDirection: "row",
@@ -702,7 +719,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   progressLabel: {
-    color: "#8C8270",
+    color: colors.textSecondary,
     fontSize: 11,
     fontWeight: "700",
     letterSpacing: 1.2,
@@ -740,7 +757,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   progressStatsText: {
-    color: "#2E425E",
+    color: colors.textPrimary,
     fontSize: 12,
     fontWeight: "600",
   },
@@ -755,10 +772,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 999,
-    backgroundColor: "#16253A",
+    backgroundColor: colors.ink,
   },
   questPillText: {
-    color: "#F5F1E8",
+    color: colors.onInk,
     fontSize: 10,
     fontWeight: "700",
     letterSpacing: 0.8,
@@ -788,46 +805,46 @@ const styles = StyleSheet.create({
     borderRadius: 1,
     borderStyle: "dashed",
     borderWidth: 1,
-    borderColor: "#D9CBB6",
+    borderColor: colors.border,
   },
   bossBadge: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: "#16253A",
+    backgroundColor: colors.ink,
   },
   bossBadgeLocked: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: "#DCD0BA",
+    backgroundColor: colors.border,
   },
   card: {
     flex: 1,
     marginBottom: 20,
     padding: 16,
     borderRadius: 16,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: "#EAE3D5",
+    borderColor: colors.surfaceAlt,
   },
   cardLocked: {
-    backgroundColor: "#F7F3EA",
-    borderColor: "#E7DFCE",
+    backgroundColor: colors.surfaceAlt,
+    borderColor: colors.border,
   },
   cardCurrent: {
-    borderColor: "#D79A1B",
+    borderColor: colors.gold,
     borderWidth: 1.5,
   },
   cardTitle: {
-    color: "#101A2A",
+    color: colors.textPrimary,
     fontFamily: "Georgia",
     fontSize: 16,
     fontWeight: "700",
     marginBottom: 8,
   },
   cardTitleLocked: {
-    color: "#9C917C",
+    color: colors.textMuted,
   },
   tagRow: {
     flexDirection: "row",
@@ -839,10 +856,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 9,
     paddingVertical: 4,
     borderRadius: 999,
-    backgroundColor: "#F1ECE0",
+    backgroundColor: colors.surfaceAlt,
   },
   tagPillText: {
-    color: "#5B5240",
+    color: colors.textMuted,
     fontSize: 10,
     fontWeight: "600",
   },
@@ -853,12 +870,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 9,
     paddingVertical: 4,
     borderRadius: 999,
-    backgroundColor: "#F5F1E8",
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: "#D79A1B",
+    borderColor: colors.gold,
   },
   askAuraPillText: {
-    color: "#D79A1B",
+    color: colors.gold,
     fontSize: 10,
     fontWeight: "700",
   },
@@ -868,7 +885,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   lockedFooterText: {
-    color: "#9C917C",
+    color: colors.textMuted,
     fontSize: 11,
     fontStyle: "italic",
   },
@@ -884,10 +901,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 10,
-    backgroundColor: "#16253A",
+    backgroundColor: colors.ink,
   },
   replayButtonText: {
-    color: "#F5F1E8",
+    color: colors.onInk,
     fontSize: 12,
     fontWeight: "700",
   },
@@ -901,7 +918,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#E3F0E6",
   },
   doneBadgeText: {
-    color: "#1F5A38",
+    color: colors.success,
     fontSize: 12,
     fontWeight: "700",
   },
@@ -910,10 +927,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 9,
     borderRadius: 10,
-    backgroundColor: "#D79A1B",
+    backgroundColor: colors.gold,
   },
   startButtonText: {
-    color: "#16253A",
+    color: colors.textPrimary,
     fontSize: 12,
     fontWeight: "700",
   },
@@ -927,17 +944,17 @@ const styles = StyleSheet.create({
     padding: 18,
   },
   bossEyebrow: {
-    color: "#D79A1B",
+    color: colors.gold,
     fontSize: 11,
     fontWeight: "700",
     letterSpacing: 1.4,
     marginBottom: 6,
   },
   bossEyebrowLocked: {
-    color: "#9C917C",
+    color: colors.textMuted,
   },
   bossTitle: {
-    color: "#F5F1E8",
+    color: colors.onInk,
     fontFamily: "Georgia",
     fontSize: 20,
     fontWeight: "700",
@@ -952,7 +969,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   bossSubtitleLocked: {
-    color: "#9C917C",
+    color: colors.textMuted,
   },
   bossButton: {
     flexDirection: "row",
@@ -963,10 +980,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 10,
-    backgroundColor: "#F5F1E8",
+    backgroundColor: colors.onInk,
   },
   bossButtonText: {
-    color: "#16253A",
+    color: colors.textPrimary,
     fontSize: 13,
     fontWeight: "700",
   },
@@ -981,9 +998,9 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 340,
     borderRadius: 16,
-    backgroundColor: "#F5F1E8",
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: "#D2C5B0",
+    borderColor: colors.border,
     paddingHorizontal: 18,
     paddingVertical: 18,
   },
@@ -994,7 +1011,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   modalHeaderText: {
-    color: "#101A2A",
+    color: colors.textPrimary,
     fontFamily: "Georgia",
     fontSize: 15,
     fontWeight: "700",
@@ -1003,7 +1020,7 @@ const styles = StyleSheet.create({
     marginVertical: 12,
   },
   modalMessage: {
-    color: "#2A3C58",
+    color: colors.textPrimary,
     fontSize: 13,
     lineHeight: 19,
     marginBottom: 16,
@@ -1013,11 +1030,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 9,
     borderRadius: 8,
-    backgroundColor: "#16253A",
+    backgroundColor: colors.ink,
   },
   modalCloseButtonText: {
-    color: "#F5F1E8",
+    color: colors.onInk,
     fontSize: 13,
     fontWeight: "700",
   },
-});
+  });

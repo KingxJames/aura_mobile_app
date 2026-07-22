@@ -5,6 +5,8 @@ import {
     useSubmitQuizAnswerMutation,
     type QuizQuestion,
 } from "@/store/services/curriculumAPI";
+import { useThemeColors } from "@/hooks/useThemeColors";
+import type { ThemeColors } from "@/constants/Colors";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
@@ -96,6 +98,8 @@ export default function QuizScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   const isTablet = width >= 768;
   const isNarrowPhone = width < 390;
@@ -267,7 +271,7 @@ export default function QuizScreen() {
   if (isQuizLoading) {
     return (
       <View style={styles.centerScreen}>
-        <ActivityIndicator color="#D79A1B" size="large" />
+        <ActivityIndicator color={colors.gold} size="large" />
         <Text style={styles.centerStateText}>Loading your quiz…</Text>
       </View>
     );
@@ -295,7 +299,7 @@ export default function QuizScreen() {
           accessibilityRole="button"
           accessibilityLabel="Close quiz"
         >
-          <ArrowLeft size={20} color="#101A2A" />
+          <ArrowLeft size={20} color={colors.textPrimary} />
         </Pressable>
         <Text
           style={[
@@ -309,8 +313,8 @@ export default function QuizScreen() {
         <View style={styles.streakBadge}>
           <Flame
             size={14}
-            color={streak > 0 ? "#D79A1B" : "#B6AC98"}
-            fill={streak > 0 ? "#D79A1B" : "transparent"}
+            color={streak > 0 ? colors.gold : colors.textMuted}
+            fill={streak > 0 ? colors.gold : "transparent"}
           />
           <Text style={styles.streakText}>{streak}</Text>
         </View>
@@ -361,7 +365,7 @@ export default function QuizScreen() {
                 ]}
               >
                 <LinearGradient
-                  colors={["#16253A", "#0F1B2C"]}
+                  colors={[colors.ink, "#0F1B2C"]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={[
@@ -450,8 +454,8 @@ export default function QuizScreen() {
                         >
                           {option}
                         </Text>
-                        {isCorrectOption && <Check size={18} color="#F5F1E8" />}
-                        {isWrongSelection && <X size={18} color="#F5F1E8" />}
+                        {isCorrectOption && <Check size={18} color={colors.onInk} />}
+                        {isWrongSelection && <X size={18} color={colors.onInk} />}
                       </Pressable>
                     );
                   })}
@@ -488,7 +492,7 @@ export default function QuizScreen() {
               },
             ]}
           >
-            <Trophy size={isTablet ? 54 : 48} color="#D79A1B" />
+            <Trophy size={isTablet ? 54 : 48} color={colors.gold} />
             <Text
               style={[styles.resultsHeading, { fontSize: isTablet ? 26 : 22 }]}
             >
@@ -511,7 +515,7 @@ export default function QuizScreen() {
               ]}
             >
               <View style={styles.resultsBadge}>
-                <Flame size={14} color="#D79A1B" fill="#D79A1B" />
+                <Flame size={14} color={colors.gold} fill={colors.gold} />
                 <Text style={styles.resultsBadgeText}>
                   Best streak {streak}
                 </Text>
@@ -529,11 +533,11 @@ export default function QuizScreen() {
                 style={styles.debriefCard}
               >
                 <View style={styles.debriefHeader}>
-                  <Sparkles size={13} color="#D79A1B" />
+                  <Sparkles size={13} color={colors.gold} />
                   <Text style={styles.debriefHeaderText}>FROM AURA</Text>
                 </View>
                 {isDebriefLoading ? (
-                  <ActivityIndicator color="#D79A1B" size="small" />
+                  <ActivityIndicator color={colors.gold} size="small" />
                 ) : (
                   <Text style={styles.debriefText}>{debriefMessage}</Text>
                 )}
@@ -560,294 +564,295 @@ export default function QuizScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: "#F5EFE3",
-  },
-  centerScreen: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-    backgroundColor: "#F5EFE3",
-  },
-  centerStateText: {
-    color: "#2E425E",
-    fontSize: 14,
-  },
-  retryButton: {
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: "#16253A",
-  },
-  retryButtonText: {
-    color: "#F5F1E8",
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  topBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#D9CBB6",
-  },
-  backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: "#CFC5B5",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  topBarTitle: {
-    flex: 1,
-    color: "#101A2A",
-    fontFamily: "Georgia",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  streakBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: "#F5F1E8",
-    borderWidth: 1,
-    borderColor: "#D2C5B0",
-  },
-  streakText: {
-    color: "#101A2A",
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  progressRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingTop: 14,
-  },
-  progressTrack: {
-    flex: 1,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "#E5DCC7",
-    overflow: "hidden",
-  },
-  progressFill: {
-    height: "100%",
-    borderRadius: 3,
-    backgroundColor: "#D79A1B",
-  },
-  progressLabel: {
-    color: "#2E425E",
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  questionScroll: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 40,
-  },
-  questionCard: {
-    borderRadius: 16,
-    paddingHorizontal: 18,
-    paddingTop: 16,
-    paddingBottom: 18,
-  },
-  tierBadge: {
-    alignSelf: "flex-start",
-    paddingHorizontal: 9,
-    paddingVertical: 3,
-    borderRadius: 999,
-    backgroundColor: "rgba(245,241,232,0.14)",
-    marginBottom: 10,
-  },
-  tierBadgeText: {
-    color: "#D79A1B",
-    fontSize: 10,
-    letterSpacing: 1.5,
-    fontWeight: "700",
-  },
-  questionText: {
-    color: "#F5F1E8",
-    fontFamily: "Georgia",
-    fontSize: 19,
-    lineHeight: 26,
-  },
-  hintToggle: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginTop: 14,
-  },
-  hintToggleText: {
-    color: "#FFE8B8",
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  hintText: {
-    color: "#D9CFE0",
-    fontSize: 13,
-    lineHeight: 18,
-    marginTop: 8,
-    fontStyle: "italic",
-  },
-  optionsList: {
-    marginTop: 16,
-    gap: 10,
-  },
-  optionRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#D2C5B0",
-    backgroundColor: "#F5F1E8",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  optionRowPressed: {
-    opacity: 0.85,
-  },
-  optionRowCorrect: {
-    backgroundColor: "#2F7A4F",
-    borderColor: "#2F7A4F",
-  },
-  optionRowWrong: {
-    backgroundColor: "#B23B3B",
-    borderColor: "#B23B3B",
-  },
-  optionText: {
-    color: "#101A2A",
-    fontSize: 15,
-    fontWeight: "600",
-    flexShrink: 1,
-  },
-  optionTextOnColor: {
-    color: "#F5F1E8",
-  },
-  submitError: {
-    marginTop: 12,
-    textAlign: "center",
-    color: "#B23B3B",
-    fontSize: 12,
-  },
-  resultsScroll: {
-    flexGrow: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 24,
-    paddingVertical: 40,
-  },
-  resultsCard: {
-    width: "100%",
-    maxWidth: 360,
-    alignItems: "center",
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: "#D2C5B0",
-    backgroundColor: "#F5F1E8",
-    paddingVertical: 32,
-    paddingHorizontal: 24,
-    gap: 4,
-  },
-  resultsHeading: {
-    marginTop: 12,
-    color: "#101A2A",
-    fontFamily: "Georgia",
-    fontSize: 22,
-    fontWeight: "700",
-  },
-  resultsScore: {
-    marginTop: 8,
-    color: "#16253A",
-    fontFamily: "Georgia",
-    fontSize: 44,
-  },
-  resultsSubtext: {
-    color: "#5A6B85",
-    fontSize: 13,
-    marginBottom: 12,
-  },
-  resultsBadgeRow: {
-    flexDirection: "row",
-    gap: 8,
-    marginBottom: 24,
-  },
-  resultsBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 999,
-    backgroundColor: "#EFE6D4",
-  },
-  resultsBadgeText: {
-    color: "#101A2A",
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  debriefCard: {
-    width: "100%",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#D2C5B0",
-    backgroundColor: "#EFE6D4",
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    marginBottom: 20,
-  },
-  debriefHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    marginBottom: 6,
-  },
-  debriefHeaderText: {
-    color: "#D79A1B",
-    fontSize: 10,
-    letterSpacing: 1.5,
-    fontWeight: "700",
-  },
-  debriefText: {
-    color: "#2A3C58",
-    fontSize: 13,
-    lineHeight: 19,
-  },
-  primaryButton: {
-    width: "100%",
-    borderRadius: 10,
-    backgroundColor: "#16253A",
-    paddingVertical: 14,
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  primaryButtonText: {
-    color: "#F5F1E8",
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  secondaryButton: {
-    width: "100%",
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  secondaryButtonText: {
-    color: "#2E425E",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    screen: {
+      flex: 1,
+      backgroundColor: colors.bg,
+    },
+    centerScreen: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 12,
+      backgroundColor: colors.bg,
+    },
+    centerStateText: {
+      color: colors.textPrimary,
+      fontSize: 14,
+    },
+    retryButton: {
+      paddingHorizontal: 18,
+      paddingVertical: 10,
+      borderRadius: 10,
+      backgroundColor: colors.ink,
+    },
+    retryButtonText: {
+      color: colors.onInk,
+      fontSize: 13,
+      fontWeight: "700",
+    },
+    topBar: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      paddingHorizontal: 16,
+      paddingTop: 8,
+      paddingBottom: 10,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    backButton: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    topBarTitle: {
+      flex: 1,
+      color: colors.textPrimary,
+      fontFamily: "Georgia",
+      fontSize: 16,
+      fontWeight: "700",
+    },
+    streakBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 999,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    streakText: {
+      color: colors.textPrimary,
+      fontSize: 12,
+      fontWeight: "700",
+    },
+    progressRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      paddingHorizontal: 16,
+      paddingTop: 14,
+    },
+    progressTrack: {
+      flex: 1,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: colors.surfaceAlt,
+      overflow: "hidden",
+    },
+    progressFill: {
+      height: "100%",
+      borderRadius: 3,
+      backgroundColor: colors.gold,
+    },
+    progressLabel: {
+      color: colors.textPrimary,
+      fontSize: 12,
+      fontWeight: "700",
+    },
+    questionScroll: {
+      paddingHorizontal: 16,
+      paddingTop: 16,
+      paddingBottom: 40,
+    },
+    questionCard: {
+      borderRadius: 16,
+      paddingHorizontal: 18,
+      paddingTop: 16,
+      paddingBottom: 18,
+    },
+    tierBadge: {
+      alignSelf: "flex-start",
+      paddingHorizontal: 9,
+      paddingVertical: 3,
+      borderRadius: 999,
+      backgroundColor: "rgba(245,241,232,0.14)",
+      marginBottom: 10,
+    },
+    tierBadgeText: {
+      color: colors.gold,
+      fontSize: 10,
+      letterSpacing: 1.5,
+      fontWeight: "700",
+    },
+    questionText: {
+      color: colors.onInk,
+      fontFamily: "Georgia",
+      fontSize: 19,
+      lineHeight: 26,
+    },
+    hintToggle: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      marginTop: 14,
+    },
+    hintToggleText: {
+      color: "#FFE8B8",
+      fontSize: 12,
+      fontWeight: "700",
+    },
+    hintText: {
+      color: "#D9CFE0",
+      fontSize: 13,
+      lineHeight: 18,
+      marginTop: 8,
+      fontStyle: "italic",
+    },
+    optionsList: {
+      marginTop: 16,
+      gap: 10,
+    },
+    optionRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+    },
+    optionRowPressed: {
+      opacity: 0.85,
+    },
+    optionRowCorrect: {
+      backgroundColor: colors.success,
+      borderColor: colors.success,
+    },
+    optionRowWrong: {
+      backgroundColor: colors.danger,
+      borderColor: colors.danger,
+    },
+    optionText: {
+      color: colors.textPrimary,
+      fontSize: 15,
+      fontWeight: "600",
+      flexShrink: 1,
+    },
+    optionTextOnColor: {
+      color: colors.onInk,
+    },
+    submitError: {
+      marginTop: 12,
+      textAlign: "center",
+      color: colors.danger,
+      fontSize: 12,
+    },
+    resultsScroll: {
+      flexGrow: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: 24,
+      paddingVertical: 40,
+    },
+    resultsCard: {
+      width: "100%",
+      maxWidth: 360,
+      alignItems: "center",
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+      paddingVertical: 32,
+      paddingHorizontal: 24,
+      gap: 4,
+    },
+    resultsHeading: {
+      marginTop: 12,
+      color: colors.textPrimary,
+      fontFamily: "Georgia",
+      fontSize: 22,
+      fontWeight: "700",
+    },
+    resultsScore: {
+      marginTop: 8,
+      color: colors.textPrimary,
+      fontFamily: "Georgia",
+      fontSize: 44,
+    },
+    resultsSubtext: {
+      color: colors.textSecondary,
+      fontSize: 13,
+      marginBottom: 12,
+    },
+    resultsBadgeRow: {
+      flexDirection: "row",
+      gap: 8,
+      marginBottom: 24,
+    },
+    resultsBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 5,
+      paddingHorizontal: 12,
+      paddingVertical: 7,
+      borderRadius: 999,
+      backgroundColor: colors.surface,
+    },
+    resultsBadgeText: {
+      color: colors.textPrimary,
+      fontSize: 12,
+      fontWeight: "700",
+    },
+    debriefCard: {
+      width: "100%",
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      marginBottom: 20,
+    },
+    debriefHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 5,
+      marginBottom: 6,
+    },
+    debriefHeaderText: {
+      color: colors.gold,
+      fontSize: 10,
+      letterSpacing: 1.5,
+      fontWeight: "700",
+    },
+    debriefText: {
+      color: colors.textPrimary,
+      fontSize: 13,
+      lineHeight: 19,
+    },
+    primaryButton: {
+      width: "100%",
+      borderRadius: 10,
+      backgroundColor: colors.ink,
+      paddingVertical: 14,
+      alignItems: "center",
+      marginBottom: 10,
+    },
+    primaryButtonText: {
+      color: colors.onInk,
+      fontSize: 15,
+      fontWeight: "700",
+    },
+    secondaryButton: {
+      width: "100%",
+      borderRadius: 10,
+      paddingVertical: 14,
+      alignItems: "center",
+    },
+    secondaryButtonText: {
+      color: colors.textPrimary,
+      fontSize: 14,
+      fontWeight: "600",
+    },
+  });

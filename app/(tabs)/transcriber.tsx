@@ -26,6 +26,7 @@ import {
   resetPlayback,
 } from "../../store/features/transcriptionSlice";
 import type { RootState } from "../../store/store";
+import { useThemeColors } from "@/hooks/useThemeColors";
 
 function base64ToUint8Array(base64: string): Uint8Array {
   const binary = atob(base64);
@@ -37,6 +38,7 @@ function base64ToUint8Array(base64: string): Uint8Array {
 }
 
 export default function TranscriberScreen() {
+  const colors = useThemeColors();
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
   const isSmallPhone = width < 390;
@@ -193,7 +195,7 @@ export default function TranscriberScreen() {
 
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: "#FAF6EE" }}
+      style={{ flex: 1, backgroundColor: colors.bg }}
       contentContainerStyle={{
         paddingTop: topPadding,
         alignItems: "center",
@@ -233,7 +235,7 @@ export default function TranscriberScreen() {
             lineHeight: 12,
             letterSpacing: 1.8,
             fontWeight: "700",
-            color: "#E2A960",
+            color: colors.gold,
             marginBottom: 12,
           }}
         >
@@ -243,7 +245,7 @@ export default function TranscriberScreen() {
         {/* TITLE */}
         <Text
           style={{
-            color: "#162538",
+            color: colors.textPrimary,
             fontFamily: Platform.OS === "ios" ? "Georgia" : "serif",
             marginBottom: 12,
             fontSize: titleSize,
@@ -256,7 +258,7 @@ export default function TranscriberScreen() {
         {/* SUBTITLE */}
         <Text
           style={{
-            color: "#40566D",
+            color: colors.textSecondary,
             marginBottom: 36,
             fontSize: subtitleSize,
             lineHeight: subtitleLineHeight,
@@ -280,10 +282,10 @@ export default function TranscriberScreen() {
               borderRadius: 18,
               borderWidth: 1.5,
               borderStyle: "dashed",
-              borderColor: "#D3C9B9",
+              borderColor: colors.border,
               alignItems: "center",
               justifyContent: "center",
-              backgroundColor: "#FAF6EE",
+              backgroundColor: colors.bg,
               height: cardHeight,
               opacity: pressed || isLoading ? 0.55 : 1,
             })}
@@ -292,12 +294,12 @@ export default function TranscriberScreen() {
               <PlatformIcon
                 ios="camera"
                 name="photo-camera"
-                color="#54657B"
+                color={colors.textSecondary}
                 size={iconSize}
               />
               <Text
                 style={{
-                  color: "#54657B",
+                  color: colors.textSecondary,
                   fontSize: actionTextSize,
                   fontWeight: "500",
                 }}
@@ -316,10 +318,10 @@ export default function TranscriberScreen() {
               borderRadius: 18,
               borderWidth: 1.5,
               borderStyle: "dashed",
-              borderColor: "#D3C9B9",
+              borderColor: colors.border,
               alignItems: "center",
               justifyContent: "center",
-              backgroundColor: "#FAF6EE",
+              backgroundColor: colors.bg,
               height: cardHeight,
               opacity: pressed || isLoading ? 0.55 : 1,
             })}
@@ -328,12 +330,12 @@ export default function TranscriberScreen() {
               <PlatformIcon
                 ios="square.and.arrow.up"
                 name="upload"
-                color="#54657B"
+                color={colors.textSecondary}
                 size={iconSize}
               />
               <Text
                 style={{
-                  color: "#54657B",
+                  color: colors.textSecondary,
                   fontSize: actionTextSize,
                   fontWeight: "500",
                 }}
@@ -347,9 +349,9 @@ export default function TranscriberScreen() {
         {/* LOADING STATE */}
         {isLoading && (
           <View style={{ alignItems: "center", paddingVertical: 48 }}>
-            <ActivityIndicator size="large" color="#E2A960" />
+            <ActivityIndicator size="large" color={colors.gold} />
             <Text
-              style={{ color: "#40566D", marginTop: 16, fontSize: subtitleSize }}
+              style={{ color: colors.textSecondary, marginTop: 16, fontSize: subtitleSize }}
             >
               Transcribing your sheet music…
             </Text>
@@ -360,10 +362,10 @@ export default function TranscriberScreen() {
         {!isLoading && activeTranscription && (
           <View
             style={{
-              backgroundColor: "#FFFFFF",
+              backgroundColor: colors.surface,
               borderRadius: 20,
               borderWidth: 1,
-              borderColor: "#EAE3D5",
+              borderColor: colors.border,
               padding: 20,
             }}
           >
@@ -373,7 +375,7 @@ export default function TranscriberScreen() {
                 fontSize: 10,
                 letterSpacing: 1.8,
                 fontWeight: "700",
-                color: "#E2A960",
+                color: colors.gold,
                 marginBottom: 12,
               }}
             >
@@ -383,7 +385,7 @@ export default function TranscriberScreen() {
             {/* ABC NOTATION PREVIEW */}
             <ScrollView
               style={{
-                backgroundColor: "#F5F1EA",
+                backgroundColor: colors.surfaceAlt,
                 borderRadius: 10,
                 padding: 14,
                 maxHeight: 160,
@@ -395,7 +397,7 @@ export default function TranscriberScreen() {
                 style={{
                   fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
                   fontSize: 12,
-                  color: "#2D3F52",
+                  color: colors.textPrimary,
                   lineHeight: 18,
                 }}
               >
@@ -411,7 +413,7 @@ export default function TranscriberScreen() {
                     onPress={playMidi}
                     style={({ pressed }) => ({
                       flex: 1,
-                      backgroundColor: "#162538",
+                      backgroundColor: colors.ink,
                       borderRadius: 14,
                       paddingVertical: 15,
                       alignItems: "center",
@@ -424,11 +426,11 @@ export default function TranscriberScreen() {
                     <PlatformIcon
                       ios="play.fill"
                       name="play-arrow"
-                      color="#FFFFFF"
+                      color={colors.onInk}
                       size={18}
                     />
                     <Text
-                      style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "600" }}
+                      style={{ color: colors.onInk, fontSize: 16, fontWeight: "600" }}
                     >
                       Play
                     </Text>
@@ -451,11 +453,11 @@ export default function TranscriberScreen() {
                     <PlatformIcon
                       ios="stop.fill"
                       name="stop"
-                      color="#FFFFFF"
+                      color={colors.onInk}
                       size={18}
                     />
                     <Text
-                      style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "600" }}
+                      style={{ color: colors.onInk, fontSize: 16, fontWeight: "600" }}
                     >
                       Stop
                     </Text>
@@ -464,7 +466,7 @@ export default function TranscriberScreen() {
               </View>
             ) : (
               <Text
-                style={{ color: "#54657B", fontSize: 13, textAlign: "center" }}
+                style={{ color: colors.textSecondary, fontSize: 13, textAlign: "center" }}
               >
                 No audio available for this transcription.
               </Text>

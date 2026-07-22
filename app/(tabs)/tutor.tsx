@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import Markdown from "react-native-markdown-display";
 import Animated, { FadeInUp } from "react-native-reanimated";
+import { useThemeColors } from "@/hooks/useThemeColors";
 import ChatHistoryButton from "./../../components/chatHistory/chatHistoryButton";
 
 // 💡 IMPORT YOUR NEW CHAT HISTORY PANEL COMPONENT
@@ -78,6 +79,7 @@ const extractStudentQuestion = (message: string) => {
 };
 
 export default function TutorScreen() {
+  const colors = useThemeColors();
   const [inputText, setInputText] = useState("");
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [isStorageLoading, setIsStorageLoading] = useState(true);
@@ -248,7 +250,7 @@ export default function TutorScreen() {
   const showSpinner = isStorageLoading || isHistoryLoading;
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#F4EFE6" }}>
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -279,14 +281,14 @@ export default function TutorScreen() {
               width: "100%",
               maxWidth: 680,
               backgroundColor: "transparent",
-              borderColor: "#CBC2B4",
+              borderColor: colors.border,
               borderRadius: 20,
               padding: 16,
               justifyContent: showSpinner ? "center" : "flex-start",
             }}
           >
             {showSpinner ? (
-              <ActivityIndicator size="small" color="#9A958C" />
+              <ActivityIndicator size="small" color={colors.textMuted} />
             ) : (
               <FlatList
                 ref={flatListRef}
@@ -310,9 +312,9 @@ export default function TutorScreen() {
                       entering={FadeInUp.duration(220).springify().damping(18)}
                       style={{
                         alignSelf: isUser ? "flex-end" : "flex-start",
-                        backgroundColor: isUser ? "#1C2024" : "transparent",
+                        backgroundColor: isUser ? colors.ink : "transparent",
                         borderWidth: isUser ? 0 : 1,
-                        borderColor: "#CBC2B4",
+                        borderColor: colors.border,
                         borderRadius: 20,
                         paddingHorizontal: 20,
                         paddingVertical: 14,
@@ -321,13 +323,13 @@ export default function TutorScreen() {
                       }}
                     >
                       {isTyping ? (
-                        <ActivityIndicator size="small" color="#9A958C" />
+                        <ActivityIndicator size="small" color={colors.textMuted} />
                       ) : isUser ? (
                         <Text
                           style={{
                             fontSize: 15,
                             lineHeight: 24,
-                            color: "#FFFFFF",
+                            color: colors.onInk,
                           }}
                         >
                           {extractStudentQuestion(item.content)}
@@ -338,12 +340,12 @@ export default function TutorScreen() {
                             body: {
                               fontSize: 15,
                               lineHeight: 24,
-                              color: "#1C1B17",
+                              color: colors.textPrimary,
                             },
                             heading3: {
                               fontSize: 18,
                               fontWeight: "bold",
-                              color: "#1C1B17",
+                              color: colors.textPrimary,
                             },
                             strong: { fontWeight: "700" },
                           }}
@@ -368,7 +370,7 @@ export default function TutorScreen() {
               style={{
                 width: "100%",
                 height: 1,
-                backgroundColor: "#E2DACB",
+                backgroundColor: colors.border,
                 marginTop: 16,
                 marginBottom: 16,
               }}
@@ -387,7 +389,7 @@ export default function TutorScreen() {
                   height: 50,
                   borderRadius: 25,
                   borderWidth: 1,
-                  borderColor: "#CBC2B4",
+                  borderColor: colors.border,
                   paddingHorizontal: 20,
                   justifyContent: "center",
                 }}
@@ -396,10 +398,10 @@ export default function TutorScreen() {
                   value={inputText}
                   onChangeText={setInputText}
                   placeholder="Ask AURA..."
-                  placeholderTextColor="#A39A8B"
+                  placeholderTextColor={colors.textMuted}
                   editable={!isSending}
                   onSubmitEditing={handleSendMessage}
-                  style={{ fontSize: 15, color: "#1C1B17", padding: 0 }}
+                  style={{ fontSize: 15, color: colors.textPrimary, padding: 0 }}
                 />
               </View>
               <TouchableOpacity
@@ -411,13 +413,13 @@ export default function TutorScreen() {
                   borderRadius: 25,
                   backgroundColor:
                     isSending || inputText.trim().length === 0
-                      ? "#C4BEB3"
-                      : "#9A958C",
+                      ? colors.border
+                      : colors.textMuted,
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                <Text style={{ color: "#F4EFE6", fontSize: 18 }}>➔</Text>
+                <Text style={{ color: colors.bg, fontSize: 18 }}>➔</Text>
               </TouchableOpacity>
             </View>
           </View>

@@ -1,8 +1,10 @@
 import { useGetCurriculumQuery, type Grade } from "@/store/services/curriculumAPI";
+import { useThemeColors } from "@/hooks/useThemeColors";
+import type { ThemeColors } from "@/constants/Colors";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { ChevronRight, Music2, Sparkles } from "lucide-react-native";
-import React from "react";
+import React, { useMemo } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -20,41 +22,44 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 
-const GRADE_THEMES = [
-  {
-    colors: ["#16253A", "#0F1B2C"] as const,
-    text: "#F5F1E8",
-    accent: "#D79A1B",
-    badgeBg: "rgba(245,241,232,0.14)",
-  },
-  {
-    colors: ["#D79A1B", "#B97D12"] as const,
-    text: "#1B1A17",
-    accent: "#16253A",
-    badgeBg: "rgba(27,26,23,0.12)",
-  },
-  {
-    colors: ["#178CCF", "#0F5E8C"] as const,
-    text: "#F5F1E8",
-    accent: "#FFE8B8",
-    badgeBg: "rgba(245,241,232,0.16)",
-  },
-  {
-    colors: ["#4A2545", "#2C1530"] as const,
-    text: "#F5F1E8",
-    accent: "#E3B23C",
-    badgeBg: "rgba(245,241,232,0.14)",
-  },
-];
+function getGradeThemes(colors: ThemeColors) {
+  return [
+    {
+      colors: [colors.ink, "#0F1B2C"] as const,
+      text: colors.onInk,
+      accent: colors.gold,
+      badgeBg: "rgba(245,241,232,0.14)",
+    },
+    {
+      colors: [colors.gold, "#B97D12"] as const,
+      text: colors.textPrimary,
+      accent: colors.textPrimary,
+      badgeBg: "rgba(27,26,23,0.12)",
+    },
+    {
+      colors: [colors.blue, "#0F5E8C"] as const,
+      text: colors.onInk,
+      accent: "#FFE8B8",
+      badgeBg: "rgba(245,241,232,0.16)",
+    },
+    {
+      colors: ["#4A2545", "#2C1530"] as const,
+      text: colors.onInk,
+      accent: "#E3B23C",
+      badgeBg: "rgba(245,241,232,0.14)",
+    },
+  ];
+}
 
 type GradeCardProps = {
   grade: Grade;
   index: number;
+  theme: ReturnType<typeof getGradeThemes>[number];
+  styles: ReturnType<typeof createStyles>;
 };
 
-function GradeCard({ grade, index }: GradeCardProps) {
+function GradeCard({ grade, index, theme, styles }: GradeCardProps) {
   const router = useRouter();
-  const theme = GRADE_THEMES[index % GRADE_THEMES.length];
   const scale = useSharedValue(1);
 
   const pressStyle = useAnimatedStyle(() => ({
@@ -144,6 +149,9 @@ function GradeCard({ grade, index }: GradeCardProps) {
 export default function Grades() {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const gradeThemes = useMemo(() => getGradeThemes(colors), [colors]);
   const {
     data: grades,
     isLoading,
@@ -164,7 +172,7 @@ export default function Grades() {
         <RefreshControl
           refreshing={isFetching && !isLoading}
           onRefresh={refetch}
-          tintColor="#D79A1B"
+          tintColor={colors.gold}
         />
       }
     >
@@ -180,7 +188,7 @@ export default function Grades() {
 
         {isLoading && (
           <View style={styles.centerState}>
-            <ActivityIndicator color="#D79A1B" size="large" />
+            <ActivityIndicator color={colors.gold} size="large" />
             <Text style={styles.centerStateText}>
               Tuning up your curriculum…
             </Text>
@@ -209,7 +217,13 @@ export default function Grades() {
         {!isLoading && !isError && (grades?.length ?? 0) > 0 && (
           <View style={styles.list}>
             {grades!.map((grade, index) => (
-              <GradeCard key={grade.id} grade={grade} index={index} />
+              <GradeCard
+                key={grade.id}
+                grade={grade}
+                index={index}
+                theme={gradeThemes[index % gradeThemes.length]}
+                styles={styles}
+              />
             ))}
           </View>
         )}
@@ -222,10 +236,11 @@ export default function Grades() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#F5EFE3",
+    backgroundColor: colors.bg,
   },
   contentContainer: {
     alignItems: "center",
@@ -245,7 +260,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 2,
   },
   heading: {
-    color: "#101A2A",
+    color: colors.textPrimary,
     fontFamily: "Georgia",
     fontSize: 24,
     lineHeight: 28,
@@ -253,7 +268,7 @@ const styles = StyleSheet.create({
   },
   subheading: {
     marginTop: 4,
-    color: "#2E425E",
+    color: colors.textPrimary,
     fontSize: 13,
     lineHeight: 18,
   },
@@ -264,7 +279,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   centerStateText: {
-    color: "#2E425E",
+    color: colors.textPrimary,
     fontSize: 14,
   },
   retryButton: {
@@ -272,10 +287,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 10,
     borderRadius: 10,
-    backgroundColor: "#16253A",
+    backgroundColor: colors.ink,
   },
   retryButtonText: {
-    color: "#F5F1E8",
+    color: colors.onInk,
     fontSize: 13,
     fontWeight: "700",
   },
@@ -340,10 +355,10 @@ const styles = StyleSheet.create({
   quote: {
     marginTop: 28,
     textAlign: "center",
-    color: "#1F2F4A",
+    color: colors.textPrimary,
     fontFamily: "Georgia",
     fontStyle: "italic",
     fontSize: 13,
     lineHeight: 22,
   },
-});
+  });

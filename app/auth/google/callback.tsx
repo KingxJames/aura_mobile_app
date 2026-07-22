@@ -3,6 +3,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useGoogleSignInMutation } from "../../../store/services/authAPI";
+import { useThemeColors } from "@/hooks/useThemeColors";
+import type { ThemeColors } from "@/constants/Colors";
 
 type AuthState = "loading" | "error";
 
@@ -13,6 +15,8 @@ function toSingleValue(value: string | string[] | undefined): string | null {
 
 export default function GoogleAuthCallbackScreen() {
   const router = useRouter();
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const params = useLocalSearchParams();
   const [googleSignIn] = useGoogleSignInMutation();
   const [state, setState] = useState<AuthState>("loading");
@@ -77,7 +81,7 @@ export default function GoogleAuthCallbackScreen() {
       <View style={styles.container}>
         {state === "loading" ? (
           <>
-            <ActivityIndicator size="large" color="#1f3c88" />
+            <ActivityIndicator size="large" color={colors.blue} />
             <Text style={styles.title}>Completing Google sign-in...</Text>
           </>
         ) : (
@@ -94,38 +98,39 @@ export default function GoogleAuthCallbackScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#efece4",
-  },
-  container: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 24,
-    gap: 12,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#1f1f1f",
-    textAlign: "center",
-  },
-  subtitle: {
-    fontSize: 15,
-    color: "#4f4b43",
-    textAlign: "center",
-  },
-  button: {
-    marginTop: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 999,
-    backgroundColor: "#1f3c88",
-  },
-  buttonText: {
-    color: "#ffffff",
-    fontWeight: "600",
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: colors.bg,
+    },
+    container: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: 24,
+      gap: 12,
+    },
+    title: {
+      fontSize: 20,
+      fontWeight: "700",
+      color: colors.textPrimary,
+      textAlign: "center",
+    },
+    subtitle: {
+      fontSize: 15,
+      color: colors.textSecondary,
+      textAlign: "center",
+    },
+    button: {
+      marginTop: 8,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderRadius: 999,
+      backgroundColor: colors.blue,
+    },
+    buttonText: {
+      color: colors.onInk,
+      fontWeight: "600",
+    },
+  });

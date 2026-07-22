@@ -18,6 +18,7 @@ export default function RootLayout() {
             />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="profile" options={{ headerShown: false }} />
+            <Stack.Screen name="settings" options={{ headerShown: false }} />
             <Stack.Screen name="grade/[id]" options={{ headerShown: false }} />
             <Stack.Screen name="quiz/[id]" options={{ headerShown: false }} />
             <Stack.Screen

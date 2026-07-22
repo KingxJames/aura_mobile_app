@@ -14,6 +14,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRegisterMutation } from "../store/services/authAPI";
+import { useThemeColors } from "@/hooks/useThemeColors";
+import type { ThemeColors } from "@/constants/Colors";
 
 function getErrorMessage(error: unknown): string {
   if (!error || typeof error !== "object") {
@@ -38,6 +40,8 @@ function getErrorMessage(error: unknown): string {
 
 export default function Register() {
   const router = useRouter();
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
   const [register, { isLoading, error: registerError }] = useRegisterMutation();
@@ -113,7 +117,7 @@ export default function Register() {
             autoCorrect={false}
             onChangeText={setName}
             placeholder="Your name"
-            placeholderTextColor="#8f8a7d"
+            placeholderTextColor={colors.textMuted}
             style={styles.input}
             value={name}
           />
@@ -125,7 +129,7 @@ export default function Register() {
             keyboardType="email-address"
             onChangeText={setEmail}
             placeholder="you@conservatory.com"
-            placeholderTextColor="#8f8a7d"
+            placeholderTextColor={colors.textMuted}
             style={styles.input}
             value={email}
           />
@@ -134,7 +138,7 @@ export default function Register() {
           <TextInput
             onChangeText={setPassword}
             placeholder="Create a password"
-            placeholderTextColor="#8f8a7d"
+            placeholderTextColor={colors.textMuted}
             secureTextEntry
             style={styles.input}
             value={password}
@@ -150,7 +154,7 @@ export default function Register() {
             ]}
           >
             {isLoading ? (
-              <ActivityIndicator color="#ffffff" />
+              <ActivityIndicator color={colors.onInk} />
             ) : (
               <Text style={styles.createButtonText}>Create account</Text>
             )}
@@ -170,136 +174,137 @@ export default function Register() {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#efece4",
-  },
-  screen: {
-    flex: 1,
-    backgroundColor: "#efece4",
-  },
-  topBar: {
-    height: 72,
-    borderBottomWidth: 1,
-    borderBottomColor: "#d4cfc2",
-    paddingHorizontal: 20,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  brand: {
-    fontSize: 36,
-    letterSpacing: 0.8,
-    color: "#171b24",
-    fontFamily: Platform.select({ ios: "Times New Roman", android: "serif" }),
-    fontWeight: "700",
-  },
-  topActionButton: {
-    borderWidth: 1,
-    borderColor: "#bbb4a5",
-    borderRadius: 22,
-    paddingVertical: 9,
-    paddingHorizontal: 16,
-    backgroundColor: "#f8f6f0",
-  },
-  topActionText: {
-    fontWeight: "700",
-    color: "#111827",
-    fontSize: 14,
-  },
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    alignItems: "center",
-    paddingBottom: 24,
-  },
-  card: {
-    width: "100%",
-    marginTop: 22,
-    marginHorizontal: 16,
-    borderRadius: 16,
-    backgroundColor: "#f3f0e8",
-    borderWidth: 1,
-    borderColor: "#ddd6c8",
-    paddingHorizontal: 18,
-    paddingVertical: 20,
-  },
-  cardTablet: {
-    maxWidth: 480,
-  },
-  kicker: {
-    fontSize: 11,
-    letterSpacing: 2,
-    color: "#c48020",
-    fontWeight: "700",
-    marginBottom: 8,
-  },
-  heading: {
-    color: "#0f1f36",
-    fontSize: 42,
-    lineHeight: 46,
-    fontFamily: Platform.select({ ios: "Times New Roman", android: "serif" }),
-    marginBottom: 8,
-  },
-  subtitle: {
-    color: "#5b5a55",
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 14,
-  },
-  label: {
-    color: "#403d34",
-    fontSize: 13,
-    marginBottom: 6,
-    marginTop: 10,
-    fontWeight: "600",
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#c9c2b4",
-    borderRadius: 12,
-    backgroundColor: "#ffffff",
-    color: "#111827",
-    fontSize: 15,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-  },
-  createButton: {
-    marginTop: 16,
-    borderRadius: 12,
-    backgroundColor: "#0f1f36",
-    alignItems: "center",
-    justifyContent: "center",
-    minHeight: 48,
-  },
-  createButtonDisabled: {
-    opacity: 0.7,
-  },
-  createButtonPressed: {
-    opacity: 0.9,
-  },
-  createButtonText: {
-    color: "#ffffff",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  errorText: {
-    color: "#c1440e",
-    marginTop: 12,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  linkRow: {
-    marginTop: 16,
-    textAlign: "center",
-    color: "#5f5a4f",
-    fontSize: 14,
-  },
-  linkStrong: {
-    color: "#111827",
-    fontWeight: "700",
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: colors.bg,
+    },
+    screen: {
+      flex: 1,
+      backgroundColor: colors.bg,
+    },
+    topBar: {
+      height: 72,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      paddingHorizontal: 20,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    brand: {
+      fontSize: 36,
+      letterSpacing: 0.8,
+      color: colors.textPrimary,
+      fontFamily: Platform.select({ ios: "Times New Roman", android: "serif" }),
+      fontWeight: "700",
+    },
+    topActionButton: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 22,
+      paddingVertical: 9,
+      paddingHorizontal: 16,
+      backgroundColor: colors.surfaceAlt,
+    },
+    topActionText: {
+      fontWeight: "700",
+      color: colors.textPrimary,
+      fontSize: 14,
+    },
+    scroll: {
+      flex: 1,
+    },
+    scrollContent: {
+      flexGrow: 1,
+      alignItems: "center",
+      paddingBottom: 24,
+    },
+    card: {
+      width: "100%",
+      marginTop: 22,
+      marginHorizontal: 16,
+      borderRadius: 16,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: 18,
+      paddingVertical: 20,
+    },
+    cardTablet: {
+      maxWidth: 480,
+    },
+    kicker: {
+      fontSize: 11,
+      letterSpacing: 2,
+      color: colors.gold,
+      fontWeight: "700",
+      marginBottom: 8,
+    },
+    heading: {
+      color: colors.textPrimary,
+      fontSize: 42,
+      lineHeight: 46,
+      fontFamily: Platform.select({ ios: "Times New Roman", android: "serif" }),
+      marginBottom: 8,
+    },
+    subtitle: {
+      color: colors.textSecondary,
+      fontSize: 14,
+      lineHeight: 20,
+      marginBottom: 14,
+    },
+    label: {
+      color: colors.textMuted,
+      fontSize: 13,
+      marginBottom: 6,
+      marginTop: 10,
+      fontWeight: "600",
+    },
+    input: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 12,
+      backgroundColor: colors.surfaceAlt,
+      color: colors.textPrimary,
+      fontSize: 15,
+      paddingHorizontal: 12,
+      paddingVertical: 12,
+    },
+    createButton: {
+      marginTop: 16,
+      borderRadius: 12,
+      backgroundColor: colors.ink,
+      alignItems: "center",
+      justifyContent: "center",
+      minHeight: 48,
+    },
+    createButtonDisabled: {
+      opacity: 0.7,
+    },
+    createButtonPressed: {
+      opacity: 0.9,
+    },
+    createButtonText: {
+      color: colors.onInk,
+      fontSize: 16,
+      fontWeight: "700",
+    },
+    errorText: {
+      color: colors.danger,
+      marginTop: 12,
+      fontSize: 13,
+      lineHeight: 18,
+    },
+    linkRow: {
+      marginTop: 16,
+      textAlign: "center",
+      color: colors.textSecondary,
+      fontSize: 14,
+    },
+    linkStrong: {
+      color: colors.textPrimary,
+      fontWeight: "700",
+    },
+  });

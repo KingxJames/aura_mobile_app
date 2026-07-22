@@ -1,4 +1,6 @@
-import React from "react";
+import { useThemeColors } from "@/hooks/useThemeColors";
+import type { ThemeColors } from "@/constants/Colors";
+import React, { useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import PlatformIcon from "../platformIcon/platformIcon";
 
@@ -11,6 +13,9 @@ export default function ChatHistoryButton({
   onHistoryPress,
   onNewPress,
 }: ChatHistoryButtonProps) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   return (
     <View style={styles.container}>
       <Pressable
@@ -25,7 +30,7 @@ export default function ChatHistoryButton({
         <PlatformIcon
           ios="clock.arrow.trianglehead.counterclockwise.rotate.90"
           name="history"
-          color="#32302A"
+          color={colors.textPrimary}
           size={14}
         />
         <Text style={styles.buttonText}>HISTORY</Text>
@@ -47,7 +52,8 @@ export default function ChatHistoryButton({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   container: {
     width: "100%",
     flexDirection: "row",
@@ -64,8 +70,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: 17,
     borderWidth: 1,
-    borderColor: "#CBC2B4",
-    backgroundColor: "#F7F3EC",
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceAlt,
   },
   buttonPressed: {
     opacity: 0.72,
@@ -74,13 +80,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 14,
     fontWeight: "600",
-    color: "#32302A",
+    color: colors.textPrimary,
   },
   buttonText: {
-    color: "#32302A",
+    color: colors.textPrimary,
     fontSize: 11,
     lineHeight: 12,
     letterSpacing: 0.8,
     fontWeight: "600",
   },
-});
+  });

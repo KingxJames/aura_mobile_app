@@ -1,6 +1,8 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Pressable, StyleSheet, Text, useWindowDimensions } from "react-native";
 import PlatformIcon from "../platformIcon/platformIcon";
+import { useThemeColors } from "../../hooks/useThemeColors";
+import type { ThemeColors } from "../../constants/Colors";
 
 interface TranscribeHistoryButtonProps {
   onPress?: () => void;
@@ -12,6 +14,8 @@ export default function TranscribeHistoryButton({
   // Grab the window dimensions to handle tablet scaling fluidly
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   return (
     <Pressable
@@ -32,7 +36,7 @@ export default function TranscribeHistoryButton({
       <PlatformIcon
         ios="clock.arrow.circlepath"
         name="history"
-        color="#1E293B" // Deep charcoal matching the icon outline
+        color={colors.textPrimary} // Deep charcoal matching the icon outline
         size={isTablet ? 18 : 15}
       />
 
@@ -44,18 +48,19 @@ export default function TranscribeHistoryButton({
   );
 }
 
-const styles = StyleSheet.create({
-  buttonBase: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6, // Keeps explicit visual space between icon and text layout
-    borderWidth: 1,
-    borderColor: "#DCD5C9", // Soft muted border profile token
-    backgroundColor: "#FAF6EE", // Cream matching your primary interface background color
-  },
-  buttonText: {
-    color: "#0261FF", // Elegant blue shade pulled directly from text layout properties
-    fontWeight: "500",
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    buttonBase: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6, // Keeps explicit visual space between icon and text layout
+      borderWidth: 1,
+      borderColor: colors.border, // Soft muted border profile token
+      backgroundColor: colors.bg, // Cream matching your primary interface background color
+    },
+    buttonText: {
+      color: colors.blue, // Elegant blue shade pulled directly from text layout properties
+      fontWeight: "500",
+    },
+  });

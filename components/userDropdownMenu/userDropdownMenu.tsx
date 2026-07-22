@@ -1,11 +1,13 @@
 import { useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
-import React from "react";
+import React, { useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSelector } from "react-redux";
 import PlatformIcon from "../platformIcon/platformIcon";
 import { useLogoutMutation } from "../../store/services/authAPI";
 import type { RootState } from "../../store/store";
+import { useThemeColors } from "../../hooks/useThemeColors";
+import type { ThemeColors } from "../../constants/Colors";
 
 type MenuRowProps = {
   label: string;
@@ -13,9 +15,11 @@ type MenuRowProps = {
   name: React.ComponentProps<typeof PlatformIcon>["name"];
   onPress?: () => void;
   disabled?: boolean;
+  colors: ThemeColors;
+  styles: ReturnType<typeof createStyles>;
 };
 
-function MenuRow({ label, ios, name, onPress, disabled }: MenuRowProps) {
+function MenuRow({ label, ios, name, onPress, disabled, colors, styles }: MenuRowProps) {
   return (
     <Pressable
       onPress={onPress}
@@ -25,7 +29,7 @@ function MenuRow({ label, ios, name, onPress, disabled }: MenuRowProps) {
         pressed && styles.menuRowPressed,
       ]}
     >
-      <PlatformIcon ios={ios} name={name} color="#1f1f1f" size={16} />
+      <PlatformIcon ios={ios} name={name} color={colors.textPrimary} size={16} />
       <Text style={styles.menuLabel}>{label}</Text>
     </Pressable>
   );
@@ -37,6 +41,8 @@ type UserDropdownMenuProps = {
 
 export default function UserDropdownMenu({ onRequestClose }: UserDropdownMenuProps) {
   const router = useRouter();
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const user = useSelector((state: RootState) => state.auth.user);
   const [logout, { isLoading: isLoggingOut }] = useLogoutMutation();
 
@@ -46,6 +52,11 @@ export default function UserDropdownMenu({ onRequestClose }: UserDropdownMenuPro
   const handleViewProfile = () => {
     onRequestClose?.();
     router.push("/profile");
+  };
+
+  const handleOpenSettings = () => {
+    onRequestClose?.();
+    router.push("/settings");
   };
 
   const handleLogout = async () => {
@@ -72,9 +83,18 @@ export default function UserDropdownMenu({ onRequestClose }: UserDropdownMenuPro
         ios="person"
         name="person"
         onPress={handleViewProfile}
+        colors={colors}
+        styles={styles}
       />
 
-      <MenuRow label="Settings" ios="gearshape" name="settings" />
+      <MenuRow
+        label="Settings"
+        ios="gearshape"
+        name="settings"
+        onPress={handleOpenSettings}
+        colors={colors}
+        styles={styles}
+      />
 
       <View style={styles.separator} />
 
@@ -84,57 +104,60 @@ export default function UserDropdownMenu({ onRequestClose }: UserDropdownMenuPro
         name="logout"
         onPress={handleLogout}
         disabled={isLoggingOut}
+        colors={colors}
+        styles={styles}
       />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    minWidth: 224,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#d6d0c4",
-    backgroundColor: "#f3f1ec",
-    overflow: "hidden",
-  },
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      minWidth: 224,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+      overflow: "hidden",
+    },
 
-  profileSection: {
-    paddingHorizontal: 14,
-    paddingTop: 12,
-    paddingBottom: 10,
-  },
-  nameText: {
-    fontSize: 18,
-    lineHeight: 18,
-    fontWeight: "700",
-    color: "#111111",
-    fontFamily: "Georgia",
-  },
-  emailText: {
-    marginTop: 2,
-    fontSize: 13,
-    color: "#4c4c4c",
-  },
-  separator: {
-    height: 1,
-    backgroundColor: "#d8d2c7",
-  },
-  menuRow: {
-    minHeight: 44,
-    paddingHorizontal: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "#f3f1ec",
-  },
-  menuRowPressed: {
-    backgroundColor: "#ebe7dd",
-  },
-  menuLabel: {
-    fontSize: 18,
-    lineHeight: 18,
-    color: "#1a1a1a",
-    fontFamily: "Georgia",
-  },
-});
+    profileSection: {
+      paddingHorizontal: 14,
+      paddingTop: 12,
+      paddingBottom: 10,
+    },
+    nameText: {
+      fontSize: 18,
+      lineHeight: 18,
+      fontWeight: "700",
+      color: colors.textPrimary,
+      fontFamily: "Georgia",
+    },
+    emailText: {
+      marginTop: 2,
+      fontSize: 13,
+      color: colors.textSecondary,
+    },
+    separator: {
+      height: 1,
+      backgroundColor: colors.border,
+    },
+    menuRow: {
+      minHeight: 44,
+      paddingHorizontal: 14,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      backgroundColor: colors.surface,
+    },
+    menuRowPressed: {
+      backgroundColor: colors.surfaceAlt,
+    },
+    menuLabel: {
+      fontSize: 18,
+      lineHeight: 18,
+      color: colors.textPrimary,
+      fontFamily: "Georgia",
+    },
+  });
