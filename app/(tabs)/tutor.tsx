@@ -17,9 +17,18 @@ import {
 import Markdown from "react-native-markdown-display";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { Play } from "lucide-react-native";
-import NoteGlyph, { DEFAULT_PITCH, NOTE_DURATION_BEATS, NOTE_LABELS, REST_LABELS } from "@/components/tutor/NoteGlyph";
+import NoteGlyph, {
+    ARTICULATION_LABELS,
+    DEFAULT_PITCH,
+    DYNAMIC_LABELS,
+    NOTE_DURATION_BEATS,
+    NOTE_LABELS,
+    ORNAMENT_LABELS,
+    REST_LABELS,
+} from "@/components/tutor/NoteGlyph";
+import NoteSequence, { type SequenceToken } from "@/components/tutor/NoteSequence";
 import { useThemeColors } from "@/hooks/useThemeColors";
-import { playTutorPitch } from "@/lib/audioSynth";
+import { playTutorPitch, playTutorSequence } from "@/lib/audioSynth";
 import { parseTutorContent } from "@/lib/tutorContent";
 import ChatHistoryButton from "./../../components/chatHistory/chatHistoryButton";
 
@@ -86,6 +95,23 @@ const extractStudentQuestion = (message: string) => {
   return message.slice(start + startToken.length, end).trim();
 };
 
+// Shared by the note and sequence captions below - describes a key/time
+// signature as trailing text, e.g. ", 3 sharps, 3/4 time".
+const describeKeyAndTime = (
+  keySignature?: number,
+  timeSignature?: { numerator: string; denominator: string },
+) => {
+  const parts: string[] = [];
+  if (keySignature) {
+    const n = Math.abs(keySignature);
+    parts.push(`${n} ${keySignature > 0 ? "sharp" : "flat"}${n === 1 ? "" : "s"}`);
+  }
+  if (timeSignature) {
+    parts.push(`${timeSignature.numerator}/${timeSignature.denominator} time`);
+  }
+  return parts;
+};
+
 export default function TutorScreen() {
   const colors = useThemeColors();
   const [inputText, setInputText] = useState("");
@@ -108,6 +134,23 @@ export default function TutorScreen() {
       await playTutorPitch(pitch, durationBeats);
     } catch (e) {
       console.error("Failed to play tutor note:", e);
+    } finally {
+      setPlayingNoteKey(null);
+    }
+  };
+
+  const handlePlaySequence = async (key: string, tokens: SequenceToken[]) => {
+    if (playingNoteKey) return;
+    setPlayingNoteKey(key);
+    try {
+      await playTutorSequence(
+        tokens.map((token) => ({
+          pitch: token.rest ? null : token.pitch,
+          durationBeats: NOTE_DURATION_BEATS[token.type],
+        })),
+      );
+    } catch (e) {
+      console.error("Failed to play tutor sequence:", e);
     } finally {
       setPlayingNoteKey(null);
     }
@@ -358,8 +401,17 @@ export default function TutorScreen() {
                         </Text>
                       ) : (
                         parseTutorContent(item.content).map((segment, index) => {
-                          if (segment.type !== "note") {
-                            return segment.value.trim().length > 0 ? (
+                          if (segment.type === "text") {
+                            // Defends against a real failure mode: when the tutor puts
+                            // a [[note:...]]/[[sequence:...]] tag inside a markdown list
+                            // item ("- [[sequence:...]]"), the tag is extracted into its
+                            // own segment and the leftover bare "-"/"*" renders as an
+                            // orphaned empty bullet. The system prompt tells Gemini not
+                            // to do this, but LLM instruction-following isn't guaranteed,
+                            // so treat a bare list marker the same as a blank segment.
+                            const trimmed = segment.value.trim();
+                            const isBlank = trimmed.length === 0 || /^[-*•]$/.test(trimmed);
+                            return !isBlank ? (
                               <Markdown
                                 key={index}
                                 style={{
@@ -385,6 +437,80 @@ export default function TutorScreen() {
                             ) : null;
                           }
 
+                          if (segment.type === "sequence") {
+                            const sequenceKey = `${item.id}-${index}`;
+                            const isPlayingThisSequence = playingNoteKey === sequenceKey;
+                            const sequenceCaptionParts = describeKeyAndTime(
+                              segment.keySignature,
+                              segment.timeSignature,
+                            );
+
+                            return (
+                              <View
+                                key={index}
+                                style={{ alignItems: "center", marginVertical: 12 }}
+                              >
+                                <NoteSequence
+                                  tokens={segment.tokens}
+                                  clef={segment.clef}
+                                  keySignature={segment.keySignature}
+                                  timeSignature={segment.timeSignature}
+                                  color={colors.textPrimary}
+                                />
+                                {sequenceCaptionParts.length > 0 && (
+                                  <Text
+                                    style={{
+                                      fontSize: 12,
+                                      color: colors.textMuted,
+                                      marginTop: 4,
+                                    }}
+                                  >
+                                    {sequenceCaptionParts.join(", ")}
+                                  </Text>
+                                )}
+                                {segment.play && (
+                                  <Pressable
+                                    onPress={() => handlePlaySequence(sequenceKey, segment.tokens)}
+                                    disabled={!!playingNoteKey}
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Play phrase"
+                                    style={{
+                                      flexDirection: "row",
+                                      alignItems: "center",
+                                      gap: 6,
+                                      marginTop: 8,
+                                      paddingHorizontal: 14,
+                                      paddingVertical: 8,
+                                      borderRadius: 999,
+                                      borderWidth: 1,
+                                      borderColor: colors.border,
+                                      opacity:
+                                        playingNoteKey && !isPlayingThisSequence ? 0.4 : 1,
+                                    }}
+                                  >
+                                    {isPlayingThisSequence ? (
+                                      <ActivityIndicator
+                                        size="small"
+                                        color={colors.textMuted}
+                                      />
+                                    ) : (
+                                      <Play size={13} color={colors.textPrimary} />
+                                    )}
+                                    <Text
+                                      style={{
+                                        fontSize: 12,
+                                        color: colors.textPrimary,
+                                        fontWeight: "600",
+                                      }}
+                                    >
+                                      {isPlayingThisSequence ? "Playing…" : "Play phrase"}
+                                    </Text>
+                                  </Pressable>
+                                )}
+                              </View>
+                            );
+                          }
+
                           const noteClef = segment.clef ?? "treble";
                           const notePitch = segment.pitch ?? DEFAULT_PITCH[noteClef];
                           const noteKey = `${item.id}-${index}`;
@@ -400,6 +526,11 @@ export default function TutorScreen() {
                                 pitch={segment.pitch}
                                 clef={segment.clef}
                                 rest={segment.rest}
+                                artic={segment.artic}
+                                dynamic={segment.dynamic}
+                                ornament={segment.ornament}
+                                keySignature={segment.keySignature}
+                                timeSignature={segment.timeSignature}
                                 color={colors.textPrimary}
                               />
                               <Text
@@ -411,6 +542,12 @@ export default function TutorScreen() {
                               >
                                 {segment.rest ? REST_LABELS[segment.value] : NOTE_LABELS[segment.value]}
                                 {!segment.rest && segment.pitch ? ` — ${segment.pitch}` : ""}
+                                {!segment.rest && segment.artic ? `, ${ARTICULATION_LABELS[segment.artic]}` : ""}
+                                {!segment.rest && segment.dynamic ? `, ${DYNAMIC_LABELS[segment.dynamic]}` : ""}
+                                {!segment.rest && segment.ornament ? `, ${ORNAMENT_LABELS[segment.ornament]}` : ""}
+                                {describeKeyAndTime(segment.keySignature, segment.timeSignature)
+                                  .map((part) => `, ${part}`)
+                                  .join("")}
                               </Text>
                               {segment.play && !segment.rest && (
                                 <Pressable

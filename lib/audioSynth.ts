@@ -219,6 +219,27 @@ export async function playTutorPitch(pitch: string, durationBeats: number): Prom
 }
 
 /**
+ * Plays a [[sequence:...]] tag's notes/rests in order - the multi-note
+ * equivalent of playTutorPitch above. `pitch: null` marks a rest: it just
+ * waits out its duration in silence rather than synthesizing a tone.
+ * Deliberately takes plain pitch strings + beat counts rather than a
+ * component-defined note-type enum, so this file stays independent of any
+ * UI type (same reasoning as playTutorPitch's `durationBeats: number` param).
+ */
+export async function playTutorSequence(
+  tokens: { pitch: string | null; durationBeats: number }[],
+): Promise<void> {
+  for (const token of tokens) {
+    if (token.pitch === null) {
+      const msPerBeat = 60000 / 100; // matches playNoteSequence's default tempo
+      await new Promise((resolve) => setTimeout(resolve, token.durationBeats * msPerBeat));
+    } else {
+      await playTutorPitch(token.pitch, token.durationBeats);
+    }
+  }
+}
+
+/**
  * Schedules metronome clicks at each given millisecond offset (relative to
  * "now"), preloading two click sounds (accent + regular) and replaying the
  * right one on every beat rather than creating a new Sound instance per

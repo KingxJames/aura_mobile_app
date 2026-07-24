@@ -1,9 +1,44 @@
 import { useFonts } from "expo-font";
 import React from "react";
-import Svg, { Ellipse, Line, Path, Text as SvgText } from "react-native-svg";
+import Svg, { Ellipse, Line, Text as SvgText } from "react-native-svg";
+import {
+  CANVAS_MARGIN,
+  CLEF_BOTTOM_LINE,
+  CLEF_GLYPH,
+  CLEF_TARGET_LINE,
+  type ClefType,
+  computePrefixWidth,
+  DEFAULT_PITCH,
+  diatonicStep,
+  Flag,
+  HEAD_ROTATION,
+  HEAD_RX,
+  HEAD_RY,
+  KeySignature,
+  ledgerSteps,
+  type NoteValueType,
+  parsePitch,
+  REST_GLYPH,
+  REST_TARGET_LINE,
+  SMUFL_FONT_FAMILY,
+  SMUFL_FONT_SIZE,
+  STAFF_LEFT_X,
+  STAFF_LINE_SPACING,
+  STAFF_TOP_Y,
+  STAFF_BOTTOM_Y,
+  stepToY,
+  STEM_LENGTH,
+  TimeSignature,
+  timeSignatureX,
+  type TimeSignatureValue,
+} from "./staffGeometry";
 
-export type NoteValueType = "whole" | "half" | "quarter" | "eighth" | "sixteenth";
-export type ClefType = "treble" | "bass";
+export type { ClefType, NoteValueType };
+export { DEFAULT_PITCH };
+
+export type ArticulationType = "staccato" | "accent" | "tenuto";
+export type DynamicType = "pp" | "p" | "mp" | "mf" | "f" | "ff";
+export type OrnamentType = "fermata";
 
 export const NOTE_LABELS: Record<NoteValueType, string> = {
   whole: "Whole note (semibreve)",
@@ -21,6 +56,25 @@ export const REST_LABELS: Record<NoteValueType, string> = {
   sixteenth: "Sixteenth rest",
 };
 
+export const ARTICULATION_LABELS: Record<ArticulationType, string> = {
+  staccato: "staccato",
+  accent: "accent",
+  tenuto: "tenuto",
+};
+
+export const DYNAMIC_LABELS: Record<DynamicType, string> = {
+  pp: "pianissimo (very quiet)",
+  p: "piano (quiet)",
+  mp: "mezzo-piano (moderately quiet)",
+  mf: "mezzo-forte (moderately loud)",
+  f: "forte (loud)",
+  ff: "fortissimo (very loud)",
+};
+
+export const ORNAMENT_LABELS: Record<OrnamentType, string> = {
+  fermata: "fermata (hold)",
+};
+
 // Duration in quarter-note beats, for handing a tagged note to audioSynth's
 // playNoteSequence (which expects duration_beats, not a note type name).
 export const NOTE_DURATION_BEATS: Record<NoteValueType, number> = {
@@ -31,122 +85,60 @@ export const NOTE_DURATION_BEATS: Record<NoteValueType, number> = {
   sixteenth: 0.25,
 };
 
-// Bundled SMuFL font (Bravura, SIL OFL - see assets/fonts/Bravura-LICENSE.txt).
-// Clefs and rests render as real glyphs from this font instead of relying on
-// whichever font the device happens to substitute for Unicode musical
-// symbols - that device-fallback approach is what caused the clef to render
-// in the wrong place to begin with, since different fallback fonts have
-// different, unknown vertical metrics. Notehead/stem/flag/accidental stay as
-// the existing hand-drawn shapes below, since those were never reported broken.
-const SMUFL_FONT_FAMILY = "Bravura";
-
-// SMuFL codepoints (stable, part of the public SMuFL 1.x spec - smufl.org).
-const CLEF_GLYPH: Record<ClefType, string> = {
-  treble: "", // gClef
-  bass: "", // fClef
+// Articulation marks come in "Above"/"Below" variants shaped for which side
+// of the notehead they sit on - rendering picks the side opposite the stem
+// (standard engraving convention).
+const ARTIC_GLYPH_ABOVE: Record<ArticulationType, string> = {
+  staccato: "\u{E4A2}",
+  accent: "\u{E4A0}",
+  tenuto: "\u{E4A4}",
+};
+const ARTIC_GLYPH_BELOW: Record<ArticulationType, string> = {
+  staccato: "\u{E4A3}",
+  accent: "\u{E4A1}",
+  tenuto: "\u{E4A5}",
 };
 
-const REST_GLYPH: Record<NoteValueType, string> = {
-  whole: "", // restWhole
-  half: "", // restHalf
-  quarter: "", // restQuarter
-  eighth: "", // rest8th
-  sixteenth: "", // rest16th
+// SMuFL has no single precomposed glyph for "mf"/"pp"/etc - dynamics are
+// built by placing individual letterform glyphs adjacent in one text run,
+// and the font typesets/kerns them correctly on its own.
+const DYNAMIC_LETTER = {
+  p: "\u{E520}", // dynamicPiano
+  m: "\u{E521}", // dynamicMezzo
+  f: "\u{E522}", // dynamicForte
+};
+const DYNAMIC_GLYPH: Record<DynamicType, string> = {
+  pp: DYNAMIC_LETTER.p + DYNAMIC_LETTER.p,
+  p: DYNAMIC_LETTER.p,
+  mp: DYNAMIC_LETTER.m + DYNAMIC_LETTER.p,
+  mf: DYNAMIC_LETTER.m + DYNAMIC_LETTER.f,
+  f: DYNAMIC_LETTER.f,
+  ff: DYNAMIC_LETTER.f + DYNAMIC_LETTER.f,
 };
 
-// Bottom staff line, in diatonic letter+octave terms, per clef.
-const CLEF_BOTTOM_LINE: Record<ClefType, { letter: string; octave: number }> = {
-  treble: { letter: "E", octave: 4 },
-  bass: { letter: "G", octave: 2 },
+// Only the "Above" fermata is used - always rendered above the whole note
+// (notehead + stem + flag), never tied to stem side the way articulation is.
+const ORNAMENT_GLYPH: Record<OrnamentType, string> = {
+  fermata: "\u{E4C0}", // fermataAbove
 };
 
-// Staff line (0 = top, 4 = bottom) each clef glyph should be centered on -
-// the G4 line for treble, the F3 line for bass. Used with alignmentBaseline
-// "central" so the glyph is vertically centered on that line regardless of
-// the rendering font's own ascent/descent metrics, instead of guessing a
-// fixed pixel offset from a baseline that varies per platform/font.
-const CLEF_TARGET_LINE: Record<ClefType, number> = {
-  treble: 3,
-  bass: 1,
-};
+const STAFF_RIGHT_X_BASE = 150;
+const NOTE_X_BASE = 118;
 
-// Staff line (0 = top, 4 = bottom) each rest glyph is conventionally centered
-// on: a whole rest hangs from the 2nd line from the top, a half rest sits on
-// the middle line, and quarter/8th/16th rests are centered on the middle line.
-const REST_TARGET_LINE: Record<NoteValueType, number> = {
-  whole: 1,
-  half: 2,
-  quarter: 2,
-  eighth: 2,
-  sixteenth: 2,
-};
-
-export const DEFAULT_PITCH: Record<ClefType, string> = {
-  treble: "B4",
-  bass: "D3",
-};
-
-const LETTER_STEPS: Record<string, number> = { C: 0, D: 1, E: 2, F: 3, G: 4, A: 5, B: 6 };
-
-function diatonicStep(letter: string, octave: number): number {
-  return octave * 7 + LETTER_STEPS[letter.toUpperCase()];
-}
-
-function parsePitch(pitch: string): { letter: string; accidental: "#" | "b" | null; octave: number } | null {
-  const match = /^([A-Ga-g])([#b]?)(-?\d+)$/.exec(pitch.trim());
-  if (!match) return null;
-  const [, letter, accidental, octave] = match;
-  return { letter: letter.toUpperCase(), accidental: (accidental as "#" | "b") || null, octave: parseInt(octave, 10) };
-}
-
-const STAFF_LINE_SPACING = 14;
-const HALF_SPACING = STAFF_LINE_SPACING / 2;
-const STAFF_TOP_Y = 34;
-const STAFF_BOTTOM_Y = STAFF_TOP_Y + STAFF_LINE_SPACING * 4;
-const STAFF_LEFT_X = 14;
-const STAFF_RIGHT_X = 150;
-const NOTE_X = 118;
-const HEAD_RX = 7.5;
-const HEAD_RY = 5.5;
-const HEAD_ROTATION = -18;
-const STEM_LENGTH = 32;
-
-// SMuFL convention: a font's em is designed to equal 4 staff-spaces, so
-// setting fontSize to 4x the line spacing makes every Bravura glyph sized
-// correctly relative to this hand-drawn staff automatically.
-const SMUFL_FONT_SIZE = STAFF_LINE_SPACING * 4;
-
-function stepToY(step: number): number {
-  return STAFF_BOTTOM_Y - step * HALF_SPACING;
-}
-
-function ledgerSteps(step: number): number[] {
-  const steps: number[] = [];
-  if (step > 8) {
-    for (let s = 10; s <= step; s += 2) steps.push(s);
-  } else if (step < 0) {
-    for (let s = -2; s >= step; s -= 2) steps.push(s);
-  }
-  return steps;
-}
-
-function Flag({ stemX, stemEndY, dir, color, index }: {
-  stemX: number;
-  stemEndY: number;
-  dir: 1 | -1;
-  color: string;
-  index: number;
-}) {
-  const y = stemEndY + dir * index * 14;
-  const d = `M ${stemX},${y} C ${stemX + 16},${y + dir * 6} ${stemX + 14},${y + dir * 22} ${stemX},${y + dir * 28}`;
-  return <Path d={d} stroke={color} strokeWidth={2.5} fill="none" strokeLinecap="round" />;
-}
+// Vertical clearance (in px) between the notehead/note construct and an
+// articulation, dynamic, or ornament mark placed next to it.
+const MARK_OFFSET = STAFF_LINE_SPACING;
 
 type Props = {
   type: NoteValueType;
   pitch?: string;
   clef?: ClefType;
   rest?: boolean;
+  artic?: ArticulationType;
+  dynamic?: DynamicType;
+  ornament?: OrnamentType;
+  keySignature?: number;
+  timeSignature?: TimeSignatureValue;
   color?: string;
   width?: number;
 };
@@ -156,10 +148,19 @@ export default function NoteGlyph({
   pitch,
   clef = "treble",
   rest = false,
+  artic,
+  dynamic,
+  ornament,
+  keySignature = 0,
+  timeSignature,
   color = "#1F2937",
   width = 170,
 }: Props) {
   const [fontsLoaded] = useFonts({ [SMUFL_FONT_FAMILY]: require("@/assets/fonts/Bravura.otf") });
+
+  const prefixWidth = computePrefixWidth(keySignature, !!timeSignature);
+  const noteX = NOTE_X_BASE + prefixWidth;
+  const staffRightX = STAFF_RIGHT_X_BASE + prefixWidth;
 
   // Rests have no pitch - their vertical position is fixed by convention
   // (REST_TARGET_LINE), not by where a note sits on the staff.
@@ -176,24 +177,81 @@ export default function NoteGlyph({
   const filledHead = !rest && type !== "whole" && type !== "half";
   const flagCount = rest ? 0 : type === "eighth" ? 1 : type === "sixteenth" ? 2 : 0;
   const stemUp = step <= 4;
-  const stemX = stemUp ? NOTE_X + HEAD_RX * 0.85 : NOTE_X - HEAD_RX * 0.85;
+  const stemX = stemUp ? noteX + HEAD_RX * 0.85 : noteX - HEAD_RX * 0.85;
   const stemEndY = stemUp ? noteY - STEM_LENGTH : noteY + STEM_LENGTH;
   const dir: 1 | -1 = stemUp ? 1 : -1;
   const ledgers = rest ? [] : ledgerSteps(step);
-  const height = STAFF_BOTTOM_Y + 40;
+
+  // Articulation sits on the side opposite the stem, in whatever space is
+  // clear of the stem/flag.
+  const articGlyph = !rest && artic ? (stemUp ? ARTIC_GLYPH_BELOW[artic] : ARTIC_GLYPH_ABOVE[artic]) : null;
+  const articY = stemUp ? noteY + HEAD_RY + MARK_OFFSET : noteY - HEAD_RY - MARK_OFFSET;
+
+  // Fermata always sits above the whole note construct (notehead, and the
+  // stem/flag too when the stem points up), not tied to stem side.
+  const glyphTopY = hasStem && stemUp ? stemEndY - (flagCount > 0 ? 16 : 0) : noteY;
+  const fermataY = glyphTopY - HEAD_RY - MARK_OFFSET;
+
+  const showDynamic = !rest && !!dynamic;
+  const dynamicY = STAFF_BOTTOM_Y + STAFF_LINE_SPACING + 6;
+
+  // The canvas used to be a fixed height tuned for a note sitting near the
+  // staff - fine until a high/low pitch (needing ledger lines already close
+  // to the top/bottom edge) combined with a mark pushed further out than the
+  // note itself, which got clipped. Instead, size the viewBox to whatever
+  // this particular glyph actually needs, with STAFF_TOP_Y/STAFF_BOTTOM_Y+40
+  // (the original margins) as a floor so the common case doesn't shrink.
+  const topCandidates = [STAFF_TOP_Y, noteY - HEAD_RY];
+  const bottomCandidates = [STAFF_BOTTOM_Y + 40, noteY + HEAD_RY];
+
+  if (!rest) {
+    ledgers.forEach((s) => {
+      const y = stepToY(s);
+      topCandidates.push(y);
+      bottomCandidates.push(y);
+    });
+    if (hasStem) {
+      topCandidates.push(stemEndY);
+      bottomCandidates.push(stemEndY);
+      if (flagCount > 0) {
+        const flagExtent = stemEndY + dir * (14 * (flagCount - 1) + 28);
+        topCandidates.push(flagExtent);
+        bottomCandidates.push(flagExtent);
+      }
+    }
+    if (articGlyph) {
+      topCandidates.push(articY - MARK_OFFSET / 2);
+      bottomCandidates.push(articY + MARK_OFFSET / 2);
+    }
+    if (ornament) {
+      topCandidates.push(fermataY - MARK_OFFSET / 2);
+      bottomCandidates.push(fermataY + MARK_OFFSET / 2);
+    }
+  }
+  if (showDynamic) {
+    bottomCandidates.push(dynamicY + MARK_OFFSET / 2);
+  }
+
+  const viewTop = Math.min(...topCandidates) - CANVAS_MARGIN;
+  const viewBottom = Math.max(...bottomCandidates) + CANVAS_MARGIN;
+  const contentHeight = viewBottom - viewTop;
 
   // Wait for the bundled font before rendering anything - a system-fallback
   // glyph flashing in first, then getting replaced, is worse than a brief blank.
   if (!fontsLoaded) return null;
 
   return (
-    <Svg width={width} height={(width / (STAFF_RIGHT_X + 20)) * height} viewBox={`0 0 ${STAFF_RIGHT_X + 20} ${height}`}>
+    <Svg
+      width={width}
+      height={(width / (staffRightX + 20)) * contentHeight}
+      viewBox={`0 ${viewTop} ${staffRightX + 20} ${contentHeight}`}
+    >
       {[0, 1, 2, 3, 4].map((line) => (
         <Line
           key={line}
           x1={STAFF_LEFT_X}
           y1={STAFF_TOP_Y + line * STAFF_LINE_SPACING}
-          x2={STAFF_RIGHT_X}
+          x2={staffRightX}
           y2={STAFF_TOP_Y + line * STAFF_LINE_SPACING}
           stroke={color}
           strokeWidth={1.5}
@@ -213,9 +271,15 @@ export default function NoteGlyph({
         {CLEF_GLYPH[clef]}
       </SvgText>
 
+      <KeySignature clef={clef} count={keySignature} color={color} />
+
+      {timeSignature && (
+        <TimeSignature value={timeSignature} x={timeSignatureX(keySignature)} color={color} />
+      )}
+
       {rest ? (
         <SvgText
-          x={NOTE_X}
+          x={noteX}
           y={STAFF_TOP_Y + REST_TARGET_LINE[type] * STAFF_LINE_SPACING}
           fontFamily={SMUFL_FONT_FAMILY}
           fontSize={SMUFL_FONT_SIZE}
@@ -230,9 +294,9 @@ export default function NoteGlyph({
           {ledgers.map((s) => (
             <Line
               key={s}
-              x1={NOTE_X - HEAD_RX - 4}
+              x1={noteX - HEAD_RX - 4}
               y1={stepToY(s)}
-              x2={NOTE_X + HEAD_RX + 4}
+              x2={noteX + HEAD_RX + 4}
               y2={stepToY(s)}
               stroke={color}
               strokeWidth={1.5}
@@ -241,7 +305,7 @@ export default function NoteGlyph({
 
           {parsedPitch?.accidental && (
             <SvgText
-              x={NOTE_X - HEAD_RX - 12}
+              x={noteX - HEAD_RX - 12}
               y={noteY + 5}
               fontSize={16}
               fill={color}
@@ -260,16 +324,58 @@ export default function NoteGlyph({
           ))}
 
           <Ellipse
-            cx={NOTE_X}
+            cx={noteX}
             cy={noteY}
             rx={HEAD_RX}
             ry={HEAD_RY}
             rotation={HEAD_ROTATION}
-            origin={`${NOTE_X}, ${noteY}`}
+            origin={`${noteX}, ${noteY}`}
             fill={filledHead ? color : "none"}
             stroke={color}
             strokeWidth={filledHead ? 0 : 2}
           />
+
+          {articGlyph && (
+            <SvgText
+              x={noteX}
+              y={articY}
+              fontFamily={SMUFL_FONT_FAMILY}
+              fontSize={SMUFL_FONT_SIZE}
+              fill={color}
+              textAnchor="middle"
+              alignmentBaseline="central"
+            >
+              {articGlyph}
+            </SvgText>
+          )}
+
+          {ornament && (
+            <SvgText
+              x={noteX}
+              y={fermataY}
+              fontFamily={SMUFL_FONT_FAMILY}
+              fontSize={SMUFL_FONT_SIZE}
+              fill={color}
+              textAnchor="middle"
+              alignmentBaseline="central"
+            >
+              {ORNAMENT_GLYPH[ornament]}
+            </SvgText>
+          )}
+
+          {showDynamic && (
+            <SvgText
+              x={noteX}
+              y={dynamicY}
+              fontFamily={SMUFL_FONT_FAMILY}
+              fontSize={SMUFL_FONT_SIZE}
+              fill={color}
+              textAnchor="middle"
+              alignmentBaseline="central"
+            >
+              {DYNAMIC_GLYPH[dynamic!]}
+            </SvgText>
+          )}
         </>
       )}
     </Svg>
