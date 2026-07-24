@@ -11,6 +11,7 @@ import {
 } from "@/store/services/curriculumAPI";
 import { useThemeColors } from "@/hooks/useThemeColors";
 import type { ThemeColors } from "@/constants/Colors";
+import type { RootState } from "@/store/store";
 import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -60,6 +61,7 @@ import Animated, {
     withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSelector } from "react-redux";
 
 const TOPIC_ICONS: Record<string, typeof Music2> = {
   pitch: Music2,
@@ -317,6 +319,7 @@ export default function GradeTopicsScreen() {
   const { width } = useWindowDimensions();
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const userId = useSelector((state: RootState) => state.auth.user?.id);
 
   const isTablet = width >= 768;
   const isNarrowPhone = width < 390;
@@ -350,11 +353,11 @@ export default function GradeTopicsScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      if (!quiz) return;
+      if (!quiz || userId == null) return;
       let cancelled = false;
       Promise.all([
-        getCompletedTopics(String(quiz.id)),
-        getAllTopicAttempts(String(quiz.id)),
+        getCompletedTopics(userId, String(quiz.id)),
+        getAllTopicAttempts(userId, String(quiz.id)),
       ]).then(([completed, attemptsMap]) => {
         if (!cancelled) {
           setCompletedTopics(completed);
@@ -364,7 +367,7 @@ export default function GradeTopicsScreen() {
       return () => {
         cancelled = true;
       };
-    }, [quiz]),
+    }, [quiz, userId]),
   );
 
   const handleAskAura = useCallback(

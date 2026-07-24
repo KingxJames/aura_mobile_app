@@ -137,6 +137,29 @@ export async function playWavBase64(base64: string): Promise<Audio.Sound> {
   return sound;
 }
 
+/**
+ * Plays a real, pre-recorded audio clip from a remote URL (Pulse & Metre's
+ * listen_mcq phase - the one exercise that isn't synthesized in-app, see
+ * PulseMetreClip on the backend) and resolves once playback finishes.
+ * Unlike the synthesized sounds above, a real clip's duration isn't known
+ * up front, so completion is detected via the playback status callback
+ * rather than a hand-timed setTimeout.
+ */
+export async function playRemoteClip(url: string): Promise<void> {
+  const { sound } = await Audio.Sound.createAsync({ uri: url });
+
+  await new Promise<void>((resolve) => {
+    sound.setOnPlaybackStatusUpdate((status) => {
+      if (status.isLoaded && status.didJustFinish) {
+        resolve();
+      }
+    });
+    sound.playAsync();
+  });
+
+  await sound.unloadAsync();
+}
+
 export type NoteEvent = {
   note_name: string;
   octave: number;
@@ -144,25 +167,86 @@ export type NoteEvent = {
   duration_beats: number;
 };
 
+// Diatonic letter -> semitone offset within an octave, used to resolve the
+// AI tutor's letter-name pitch strings (which may use flats, unlike
+// CHROMATIC_NOTES) down to one of the 12 chromatic names above.
+const NATURAL_SEMITONES: Record<string, number> = {
+  C: 0,
+  D: 2,
+  E: 4,
+  F: 5,
+  G: 7,
+  A: 9,
+  B: 11,
+};
+
+/**
+ * Parses a tutor pitch tag like "C4", "Bb3", or "F#5" into the note_name/
+ * octave shape playNoteSequence expects, normalizing flats/sharps (and the
+ * rare octave-crossing case like "Cb4" or "B#3") down to CHROMATIC_NOTES'
+ * sharp-only spelling.
+ */
+function parseTutorPitch(pitch: string): { note_name: string; octave: number } | null {
+  const match = /^([A-Ga-g])([#b]?)(-?\d+)$/.exec(pitch.trim());
+  if (!match) return null;
+  const [, letter, accidental, octaveStr] = match;
+
+  let semitone = NATURAL_SEMITONES[letter.toUpperCase()];
+  if (accidental === "#") semitone += 1;
+  if (accidental === "b") semitone -= 1;
+
+  let octave = parseInt(octaveStr, 10);
+  if (semitone < 0) {
+    semitone += 12;
+    octave -= 1;
+  } else if (semitone > 11) {
+    semitone -= 12;
+    octave += 1;
+  }
+
+  return { note_name: CHROMATIC_NOTES[semitone], octave };
+}
+
+/**
+ * Plays a single pitch tagged by the AI tutor (a [[note:...,pitch:C4,play:true]]
+ * tag) - the tutor-chat equivalent of playNoteSequence for a lone note, since
+ * the tutor only ever tags one note at a time rather than a full melody.
+ */
+export async function playTutorPitch(pitch: string, durationBeats: number): Promise<void> {
+  const parsed = parseTutorPitch(pitch);
+  if (!parsed) return;
+  await playNoteSequence([{ ...parsed, degree: 0, duration_beats: durationBeats }]);
+}
+
 /**
  * Schedules metronome clicks at each given millisecond offset (relative to
  * "now"), preloading two click sounds (accent + regular) and replaying the
  * right one on every beat rather than creating a new Sound instance per
  * tick. `beatsPerBar` marks which beats are downbeats (index 0, beatsPerBar,
  * 2*beatsPerBar, ...) so the accent click actually outlines the metre -
- * without it 2-time and 3-time patterns are audibly identical. Returns a
- * handle to cancel any pending clicks (e.g. if the user navigates away
- * mid-playback).
+ * without it 2-time and 3-time patterns are audibly identical.
+ *
+ * `audibleIndices`, when given, restricts which beat indices actually sound -
+ * used by Pulse & Metre's muted_bar_tap/boss phases, where bar 2's timestamps
+ * still need to elapse (so the tap window stays open the full length) but
+ * must stay silent, forcing the user to keep time from memory. Omit it to
+ * sound every beat (the listen_mcq/downbeat_tap phases).
+ *
+ * Returns a handle to cancel any pending clicks (e.g. if the user navigates
+ * away mid-playback).
  */
 export function scheduleClickTrack(
   beatTimestampsMs: number[],
   beatsPerBar: number = 1,
   onBeat?: (index: number) => void,
+  audibleIndices?: number[],
 ): { stop: () => void } {
   const timeouts: ReturnType<typeof setTimeout>[] = [];
   let accentSound: Audio.Sound | null = null;
   let regularSound: Audio.Sound | null = null;
   let cancelled = false;
+
+  const audibleSet = audibleIndices ? new Set(audibleIndices) : null;
 
   const accentBase64 = synthesizeClickWavBase64(true);
   const regularBase64 = synthesizeClickWavBase64(false);
@@ -181,8 +265,11 @@ export function scheduleClickTrack(
 
     beatTimestampsMs.forEach((offsetMs, index) => {
       const isDownbeat = index % beatsPerBar === 0;
+      const isAudible = audibleSet ? audibleSet.has(index) : true;
       const timeoutId = setTimeout(() => {
-        (isDownbeat ? accentSound : regularSound)?.replayAsync();
+        if (isAudible) {
+          (isDownbeat ? accentSound : regularSound)?.replayAsync();
+        }
         onBeat?.(index);
       }, offsetMs);
       timeouts.push(timeoutId);

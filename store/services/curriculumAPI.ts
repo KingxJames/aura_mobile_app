@@ -172,8 +172,8 @@ export const curriculumApi = baseAPI.injectEndpoints({
       ],
     }),
 
-    getStudentProgress: build.query<UserProgress[], { userId: number }>({
-      query: ({ userId }) => `/v1/curriculum/progress?user_id=${userId}`,
+    getStudentProgress: build.query<UserProgress[], void>({
+      query: () => "/v1/curriculum/progress",
       transformResponse: (res: ApiEnvelope<UserProgress[]>) => res.data ?? [],
       providesTags: (result) =>
         result

@@ -16,7 +16,11 @@ import {
 } from "react-native";
 import Markdown from "react-native-markdown-display";
 import Animated, { FadeInUp } from "react-native-reanimated";
+import { Play } from "lucide-react-native";
+import NoteGlyph, { DEFAULT_PITCH, NOTE_DURATION_BEATS, NOTE_LABELS, REST_LABELS } from "@/components/tutor/NoteGlyph";
 import { useThemeColors } from "@/hooks/useThemeColors";
+import { playTutorPitch } from "@/lib/audioSynth";
+import { parseTutorContent } from "@/lib/tutorContent";
 import ChatHistoryButton from "./../../components/chatHistory/chatHistoryButton";
 
 // 💡 IMPORT YOUR NEW CHAT HISTORY PANEL COMPONENT
@@ -30,7 +34,6 @@ import {
     useSendTutorMessageMutation,
 } from "./../../store/services/tutorAPI";
 
-const USER_ID = 1;
 const STORAGE_KEY = "@aura_active_conversation_id";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -46,6 +49,11 @@ const TUTOR_MESSAGE_WRAPPER = {
   questionEnd: "</student_question>",
 } as const;
 
+// The [[note:...]] tag contract (format, allowed keys, when to use it) is
+// defined once, server-side, in aura-backend's TutorController::chat
+// $systemPrompt - it used to be duplicated here too, out of sync with what
+// the backend actually told Gemini, which is how the tag and the "never use
+// markdown images" instruction ended up contradicting each other.
 const buildTutorMessage = (studentQuestion: string) => {
   const systemInstruction = [
     "You are AURA, a supportive music tutor.",
@@ -89,6 +97,22 @@ export default function TutorScreen() {
   // 💡 STATE CONTROLS FOR SIDEBAR OVERLAY
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
+  // Keyed by `${messageId}-${segmentIndex}` so only the tapped note shows a
+  // spinner and every other play button in the thread disables while it rings out.
+  const [playingNoteKey, setPlayingNoteKey] = useState<string | null>(null);
+
+  const handlePlayNote = async (key: string, pitch: string, durationBeats: number) => {
+    if (playingNoteKey) return;
+    setPlayingNoteKey(key);
+    try {
+      await playTutorPitch(pitch, durationBeats);
+    } catch (e) {
+      console.error("Failed to play tutor note:", e);
+    } finally {
+      setPlayingNoteKey(null);
+    }
+  };
+
   const flatListRef = useRef<FlatList>(null);
 
   // Load conversation ID on mount
@@ -124,7 +148,7 @@ export default function TutorScreen() {
 
   const { data: fetchedLogs = [], isFetching: isHistoryLoading } =
     useGetTutorHistoryQuery(
-      { userId: USER_ID, conversationId },
+      { conversationId },
       { skip: isStorageLoading || !conversationId },
     );
 
@@ -133,7 +157,7 @@ export default function TutorScreen() {
 
   // 💡 2. FETCH ALL PAST THREAD SUMMARIES FOR THE SIDE PANEL
   const { data: conversationsList = [], isLoading: isListLoading } =
-    useGetTutorConversationsQuery({ userId: USER_ID });
+    useGetTutorConversationsQuery();
 
   // 3. SEND MESSAGE MUTATION
   const [sendTutorMessage, { isLoading: isSending }] =
@@ -172,7 +196,6 @@ export default function TutorScreen() {
   const handleDeleteConversation = async (id: string) => {
     try {
       await deleteConversation({
-        userId: USER_ID,
         conversationId: id,
       }).unwrap();
       if (conversationId === id) {
@@ -195,7 +218,6 @@ export default function TutorScreen() {
 
     try {
       const payload = await sendTutorMessage({
-        user_id: USER_ID,
         message: wrappedUserMessage,
         ...(conversationId && { conversation_id: conversationId }),
       }).unwrap();
@@ -335,27 +357,109 @@ export default function TutorScreen() {
                           {extractStudentQuestion(item.content)}
                         </Text>
                       ) : (
-                        <Markdown
-                          style={{
-                            body: {
-                              fontSize: 15,
-                              lineHeight: 24,
-                              color: colors.textPrimary,
-                            },
-                            heading3: {
-                              fontSize: 18,
-                              fontWeight: "bold",
-                              color: colors.textPrimary,
-                            },
-                            strong: { fontWeight: "700" },
-                          }}
-                          rules={{
-                            image: () => null,
-                            image_inline: () => null,
-                          }}
-                        >
-                          {item.content}
-                        </Markdown>
+                        parseTutorContent(item.content).map((segment, index) => {
+                          if (segment.type !== "note") {
+                            return segment.value.trim().length > 0 ? (
+                              <Markdown
+                                key={index}
+                                style={{
+                                  body: {
+                                    fontSize: 15,
+                                    lineHeight: 24,
+                                    color: colors.textPrimary,
+                                  },
+                                  heading3: {
+                                    fontSize: 18,
+                                    fontWeight: "bold",
+                                    color: colors.textPrimary,
+                                  },
+                                  strong: { fontWeight: "700" },
+                                }}
+                                rules={{
+                                  image: () => null,
+                                  image_inline: () => null,
+                                }}
+                              >
+                                {segment.value}
+                              </Markdown>
+                            ) : null;
+                          }
+
+                          const noteClef = segment.clef ?? "treble";
+                          const notePitch = segment.pitch ?? DEFAULT_PITCH[noteClef];
+                          const noteKey = `${item.id}-${index}`;
+                          const isPlayingThisNote = playingNoteKey === noteKey;
+
+                          return (
+                            <View
+                              key={index}
+                              style={{ alignItems: "center", marginVertical: 12 }}
+                            >
+                              <NoteGlyph
+                                type={segment.value}
+                                pitch={segment.pitch}
+                                clef={segment.clef}
+                                rest={segment.rest}
+                                color={colors.textPrimary}
+                              />
+                              <Text
+                                style={{
+                                  fontSize: 12,
+                                  color: colors.textMuted,
+                                  marginTop: 4,
+                                }}
+                              >
+                                {segment.rest ? REST_LABELS[segment.value] : NOTE_LABELS[segment.value]}
+                                {!segment.rest && segment.pitch ? ` — ${segment.pitch}` : ""}
+                              </Text>
+                              {segment.play && !segment.rest && (
+                                <Pressable
+                                  onPress={() =>
+                                    handlePlayNote(
+                                      noteKey,
+                                      notePitch,
+                                      NOTE_DURATION_BEATS[segment.value],
+                                    )
+                                  }
+                                  disabled={!!playingNoteKey}
+                                  accessibilityRole="button"
+                                  accessibilityLabel={`Play ${notePitch}`}
+                                  style={{
+                                    flexDirection: "row",
+                                    alignItems: "center",
+                                    gap: 6,
+                                    marginTop: 8,
+                                    paddingHorizontal: 14,
+                                    paddingVertical: 8,
+                                    borderRadius: 999,
+                                    borderWidth: 1,
+                                    borderColor: colors.border,
+                                    opacity:
+                                      playingNoteKey && !isPlayingThisNote ? 0.4 : 1,
+                                  }}
+                                >
+                                  {isPlayingThisNote ? (
+                                    <ActivityIndicator
+                                      size="small"
+                                      color={colors.textMuted}
+                                    />
+                                  ) : (
+                                    <Play size={13} color={colors.textPrimary} />
+                                  )}
+                                  <Text
+                                    style={{
+                                      fontSize: 12,
+                                      color: colors.textPrimary,
+                                      fontWeight: "600",
+                                    }}
+                                  >
+                                    {isPlayingThisNote ? "Playing…" : "Play note"}
+                                  </Text>
+                                </Pressable>
+                              )}
+                            </View>
+                          );
+                        })
                       )}
                     </Animated.View>
                   );
@@ -401,7 +505,12 @@ export default function TutorScreen() {
                   placeholderTextColor={colors.textMuted}
                   editable={!isSending}
                   onSubmitEditing={handleSendMessage}
-                  style={{ fontSize: 15, color: colors.textPrimary, padding: 0 }}
+                  style={{
+                    fontSize: 15,
+                    color: colors.textPrimary,
+                    padding: 0,
+                    outlineWidth: 0,
+                  }}
                 />
               </View>
               <TouchableOpacity

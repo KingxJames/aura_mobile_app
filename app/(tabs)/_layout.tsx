@@ -96,9 +96,9 @@ export default function TabLayout() {
           tabBarActiveTintColor: colors.gold,
           tabBarInactiveTintColor: colors.textSecondary,
           tabBarShowLabel: true,
+          tabBarLabelPosition: "below-icon",
           tabBarLabelStyle: styles.tabBarLabel,
           tabBarItemStyle: styles.tabBarItem,
-          tabBarActiveBackgroundColor: colors.ink,
           headerTransparent: true,
           headerBackground: () => (
             <View style={styles.headerBackground}>

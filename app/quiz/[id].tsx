@@ -7,6 +7,7 @@ import {
 } from "@/store/services/curriculumAPI";
 import { useThemeColors } from "@/hooks/useThemeColors";
 import type { ThemeColors } from "@/constants/Colors";
+import type { RootState } from "@/store/store";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
@@ -37,6 +38,7 @@ import Animated, {
     withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSelector } from "react-redux";
 
 const MAX_QUESTIONS_PER_SESSION = 10;
 
@@ -100,6 +102,7 @@ export default function QuizScreen() {
   const { width } = useWindowDimensions();
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const userId = useSelector((state: RootState) => state.auth.user?.id);
 
   const isTablet = width >= 768;
   const isNarrowPhone = width < 390;
@@ -156,9 +159,15 @@ export default function QuizScreen() {
   }, [questionPool, activeQuestion]);
 
   useEffect(() => {
-    if (phase === "results" && quiz && topic) {
-      markTopicCompleted(String(quiz.id), topic);
-      recordTopicAttempt(String(quiz.id), topic, correctCount, totalQuestions);
+    if (phase === "results" && quiz && topic && userId != null) {
+      markTopicCompleted(userId, String(quiz.id), topic);
+      recordTopicAttempt(
+        userId,
+        String(quiz.id),
+        topic,
+        correctCount,
+        totalQuestions,
+      );
 
       getTopicDebrief({
         quiz_id: Number(quiz.id),
@@ -175,7 +184,7 @@ export default function QuizScreen() {
     // Fires once per results screen; correctCount/streak/tier are already
     // settled to their final values by the time phase flips to "results".
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, quiz, topic]);
+  }, [phase, quiz, topic, userId]);
 
   const shakeStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: shake.value }],

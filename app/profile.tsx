@@ -36,7 +36,7 @@ export default function ProfileScreen() {
   const [logout, { isLoading: isLoggingOut }] = useLogoutMutation();
   const [uploadAvatar, { isLoading: isUploadingAvatar }] = useUploadAvatarMutation();
   const { data: progress, isLoading: isLoadingProgress } = useGetStudentProgressQuery(
-    { userId: Number(user?.id) },
+    undefined,
     { skip: !user?.id },
   );
 

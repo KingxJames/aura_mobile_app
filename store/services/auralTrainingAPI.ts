@@ -23,6 +23,26 @@ export type NoteEvent = {
 type McqQuestion = {
   prompt: string;
   options: string[];
+  // Archetype labels (e.g. "2/4" -> "March 🚶") for the listen_mcq/boss phases -
+  // absent means render the raw option value as-is.
+  option_labels?: Record<string, string>;
+};
+
+// Pulse & Metre's 10-question, 4-phase progression - matches
+// AuralModuleController::phaseForQuestionNumber on the backend.
+export type PulseMetrePhase =
+  | "listen_mcq"
+  | "downbeat_tap"
+  | "muted_bar_tap"
+  | "boss";
+
+export type PulseMetreSessionProgress = {
+  question_number: number;
+  phase: PulseMetrePhase;
+  total_questions: number;
+  // Only present on the submitAttempt response, not on generateExercise's.
+  status?: "active" | "completed";
+  correct_count?: number;
 };
 
 // Raw exercise payload shape - a union keyed by module_type, matching exactly
@@ -34,13 +54,31 @@ export type PulseMetreExercise = {
   exercise_id: number;
   grade_id: string;
   module_type: "pulse_metre";
-  tempo_bpm: number;
+  phase: PulseMetrePhase;
   time_signature: string;
-  beats_per_bar: number;
-  bars: number;
-  beat_timestamps_ms: number[];
-  question: McqQuestion;
+  // Absent for listen_mcq - that phase plays a real recorded clip (see
+  // audio_url below) instead of a synthesized beat grid, so tempo/bar-count/
+  // beat timing are meaningless there and the backend omits them entirely.
+  tempo_bpm?: number;
+  beats_per_bar?: number;
+  bars?: number;
+  beat_timestamps_ms?: number[];
+  // downbeat_tap only: which beat_timestamps_ms indices are beat 1 of a bar.
+  downbeat_indices?: number[];
+  // muted_bar_tap/boss only: which beat_timestamps_ms indices actually sound -
+  // the rest stay silent so the user must tap through from memory.
+  audible_beat_indices?: number[];
+  instruction?: string;
+  // listen_mcq only: a real, pre-recorded 2-bar clip to play instead of the
+  // synthesized click track - see PulseMetreClip on the backend.
+  audio_url?: string;
+  clip_label?: string;
+  // Only present for listen_mcq/boss - the other two phases are tap-only.
+  question?: McqQuestion;
   ground_truth: { time_signature: string };
+  session_id: number;
+  question_number: number;
+  session_progress: PulseMetreSessionProgress;
 };
 
 export type EchoSingingExercise = {
@@ -96,11 +134,32 @@ export type AuralAttemptResult = {
   correct_answer?: string | Record<string, unknown>;
   score_details?: Record<string, unknown> | null;
   message?: string;
+  // Only present when the attempt was for pulse_metre.
+  session_progress?: PulseMetreSessionProgress;
 };
 
 type SubmitAttemptArgs = {
   exerciseId: number;
   body: Record<string, unknown> | FormData;
+};
+
+// Matches QuizController::topicDebrief/topicHelp's response shape exactly -
+// AuralModuleController::debrief/help are a direct mirror of those two.
+export type AuraNoteResponse = {
+  success: boolean;
+  message: string;
+};
+
+export type AuralDebriefBody = {
+  module_type: AuralModuleType;
+  correct_count: number;
+  total_questions: number;
+};
+
+export type AuralHelpBody = {
+  module_type: AuralModuleType;
+  attempts: number;
+  best_score_percent: number;
 };
 
 export const auralTrainingApi = baseAPI.injectEndpoints({
@@ -125,9 +184,29 @@ export const auralTrainingApi = baseAPI.injectEndpoints({
         body,
       }),
     }),
+
+    getAuralDebrief: build.mutation<AuraNoteResponse, AuralDebriefBody>({
+      query: (body) => ({
+        url: "/v1/aural/modules/debrief",
+        method: "POST",
+        body,
+      }),
+    }),
+
+    getAuralHelp: build.mutation<AuraNoteResponse, AuralHelpBody>({
+      query: (body) => ({
+        url: "/v1/aural/modules/help",
+        method: "POST",
+        body,
+      }),
+    }),
   }),
   overrideExisting: false,
 });
 
-export const { useGenerateAuralExerciseMutation, useSubmitAuralAttemptMutation } =
-  auralTrainingApi;
+export const {
+  useGenerateAuralExerciseMutation,
+  useSubmitAuralAttemptMutation,
+  useGetAuralDebriefMutation,
+  useGetAuralHelpMutation,
+} = auralTrainingApi;

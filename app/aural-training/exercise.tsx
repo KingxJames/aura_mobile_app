@@ -1,44 +1,50 @@
-import { markAuralModuleCompleted } from "@/lib/auralModuleProgress";
-import { playNoteSequence, scheduleClickTrack } from "@/lib/audioSynth";
-import {
-    useGenerateAuralExerciseMutation,
-    useSubmitAuralAttemptMutation,
-    type AuralAttemptResult,
-    type AuralExercise,
-    type AuralModuleType,
-} from "@/store/services/auralTrainingAPI";
 import type { ThemeColors } from "@/constants/Colors";
 import { useThemeColors } from "@/hooks/useThemeColors";
+import {
+  playNoteSequence,
+  playRemoteClip,
+  scheduleClickTrack,
+} from "@/lib/audioSynth";
+import { markAuralModuleCompleted } from "@/lib/auralModuleProgress";
+import {
+  useGenerateAuralExerciseMutation,
+  useGetAuralDebriefMutation,
+  useSubmitAuralAttemptMutation,
+  type AuralAttemptResult,
+  type AuralExercise,
+  type AuralModuleType,
+  type PulseMetrePhase,
+} from "@/store/services/auralTrainingAPI";
 import { Audio } from "expo-av";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
-    ArrowLeft,
-    Check,
-    Mic,
-    Play,
-    Sparkles,
-    Square,
-    Trophy,
-    X,
+  ArrowLeft,
+  Check,
+  Mic,
+  Play,
+  Sparkles,
+  Square,
+  Trophy,
+  X,
 } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View,
-    useWindowDimensions,
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
 } from "react-native";
 import Animated, {
-    FadeIn,
-    FadeInDown,
-    useAnimatedStyle,
-    useSharedValue,
-    withSequence,
-    withTiming,
+  FadeIn,
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -66,6 +72,27 @@ type Phase =
   | "results"
   | "error";
 
+// Pulse & Metre phase copy, matching AuralModuleController::phaseForQuestionNumber.
+function pulseMetrePhaseHeading(phase: PulseMetrePhase): string {
+  switch (phase) {
+    case "listen_mcq":
+      return "Listen to the beat";
+    case "downbeat_tap":
+      return "Tap only the strong beat";
+    case "muted_bar_tap":
+      return "Keep the beat through the silence";
+    case "boss":
+      return "Hold the beat, then name it";
+  }
+}
+
+// downbeat_tap and muted_bar_tap have no follow-up MCQ - the tap itself is
+// the whole answer, so we submit the moment the tap window closes instead of
+// waiting on a button press.
+function pulseMetreAutoSubmits(phase: PulseMetrePhase): boolean {
+  return phase === "downbeat_tap" || phase === "muted_bar_tap";
+}
+
 export default function AuralExerciseScreen() {
   const { moduleType, gradeId, moduleLabel } = useLocalSearchParams<{
     moduleType: AuralModuleType;
@@ -83,10 +110,13 @@ export default function AuralExerciseScreen() {
   const [generateExercise] = useGenerateAuralExerciseMutation();
   const [submitAttempt, { isLoading: isSubmitting }] =
     useSubmitAuralAttemptMutation();
+  const [getAuralDebrief, { isLoading: isDebriefLoading }] =
+    useGetAuralDebriefMutation();
 
   const [exercise, setExercise] = useState<AuralExercise | null>(null);
   const [phase, setPhase] = useState<Phase>("loading");
   const [result, setResult] = useState<AuralAttemptResult | null>(null);
+  const [debriefMessage, setDebriefMessage] = useState<string | null>(null);
 
   // Round-level counters - persist across exercises within a round, only
   // reset when a whole new round starts (mount, or "Try again").
@@ -113,6 +143,11 @@ export default function AuralExerciseScreen() {
   const [micError, setMicError] = useState<string | null>(null);
 
   const tapStartRef = useRef<number | null>(null);
+  // Mirrors tapTimestamps state - needed because the auto-submit timeout for
+  // downbeat_tap/muted_bar_tap is scheduled up-front (in handlePlayAndTap) and
+  // would otherwise close over the empty array from that call, not whatever
+  // taps land afterward.
+  const tapTimestampsRef = useRef<number[]>([]);
   const clickTrackRef = useRef<{ stop: () => void } | null>(null);
   const answerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const recordingRef = useRef<Audio.Recording | null>(null);
@@ -124,6 +159,7 @@ export default function AuralExerciseScreen() {
     setIsPlaying(false);
     setHasPlayedOnce(false);
     setHasPlayedAltered(false);
+    tapTimestampsRef.current = [];
     setTapTimestamps([]);
     setSelectedTimeSignature(null);
     setSelectedPosition(null);
@@ -149,6 +185,13 @@ export default function AuralExerciseScreen() {
     try {
       const ex = await generateExercise({ moduleType, gradeId }).unwrap();
       setExercise(ex);
+      // Pulse & Metre's progress is tracked server-side (PulseMetreSession), so
+      // the round counter defers to it rather than the client's own count -
+      // this also means re-opening the module mid-arc resumes where it left
+      // off instead of restarting the progress bar at 1.
+      if (ex.module_type === "pulse_metre") {
+        setRoundIndex(ex.session_progress.question_number);
+      }
       setPhase("intro");
     } catch {
       setPhase("error");
@@ -174,6 +217,27 @@ export default function AuralExerciseScreen() {
     // Only re-run when the route params identify a different module/grade to load.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [moduleType, gradeId]);
+
+  // Fires once per results screen, mirroring app/quiz/[id].tsx's topic debrief
+  // effect. Echo Singing is excluded - its grading is a backend stub (every
+  // attempt is is_correct: null), so correctCount would always misleadingly
+  // read 0/10 rather than reflecting anything real to react to.
+  useEffect(() => {
+    if (phase === "results" && moduleType !== "echo_singing") {
+      setDebriefMessage(null);
+      getAuralDebrief({
+        module_type: moduleType,
+        correct_count: correctCount,
+        total_questions: ROUND_LENGTH,
+      })
+        .unwrap()
+        .then((res) => setDebriefMessage(res.message))
+        .catch(() => setDebriefMessage(null));
+    }
+    // Fires once per results screen; correctCount is already settled to its
+    // final value by the time phase flips to "results".
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, moduleType]);
 
   const shakeStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: shake.value }],
@@ -203,10 +267,17 @@ export default function AuralExerciseScreen() {
     );
   };
 
-  // Advances to the next exercise in the round, or - once ROUND_LENGTH has
-  // been reached - marks the module complete and shows the results screen.
-  const advanceRound = () => {
-    if (roundIndex >= ROUND_LENGTH) {
+  // Advances to the next exercise in the round, or marks the module complete
+  // and shows the results screen. Pulse & Metre's PulseMetreSession is the
+  // source of truth for when the 10-question arc is actually done (it can
+  // resume mid-arc, so the client's own roundIndex isn't reliable there);
+  // every other module type still just counts to ROUND_LENGTH locally.
+  const advanceRound = (lastResult?: AuralAttemptResult) => {
+    const pulseMetreSessionCompleted =
+      exercise?.module_type === "pulse_metre" &&
+      lastResult?.session_progress?.status === "completed";
+
+    if (pulseMetreSessionCompleted || roundIndex >= ROUND_LENGTH) {
       markAuralModuleCompleted(gradeId, moduleType);
       setPhase("results");
     } else {
@@ -227,7 +298,10 @@ export default function AuralExerciseScreen() {
       if (res.is_correct === true) setCorrectCount((prev) => prev + 1);
       if (res.is_correct === false) triggerShake();
       setPhase("feedback");
-      answerTimeoutRef.current = setTimeout(advanceRound, FEEDBACK_DURATION_MS);
+      answerTimeoutRef.current = setTimeout(
+        () => advanceRound(res),
+        FEEDBACK_DURATION_MS,
+      );
     } catch {
       setResult({
         success: false,
@@ -235,7 +309,7 @@ export default function AuralExerciseScreen() {
         message: "Couldn't submit that attempt. Try again in a moment.",
       });
       setPhase("feedback");
-      answerTimeoutRef.current = setTimeout(advanceRound, FEEDBACK_DURATION_MS);
+      answerTimeoutRef.current = setTimeout(() => advanceRound(), FEEDBACK_DURATION_MS);
     }
   };
 
@@ -243,36 +317,70 @@ export default function AuralExerciseScreen() {
 
   const handlePlayAndTap = () => {
     if (exercise?.module_type !== "pulse_metre" || isPlaying) return;
+
+    // listen_mcq plays a real recorded clip (no synthesized beat grid, no
+    // tapping to capture) - just wait for it to finish, then reveal the MCQ.
+    if (exercise.phase === "listen_mcq") {
+      if (!exercise.audio_url) return;
+      setIsPlaying(true);
+      playRemoteClip(exercise.audio_url).finally(() => {
+        setIsPlaying(false);
+        setHasPlayedOnce(true);
+        setPhase("answering");
+      });
+      return;
+    }
+
+    tapTimestampsRef.current = [];
     setTapTimestamps([]);
     setIsPlaying(true);
     tapStartRef.current = Date.now();
+    // audible_beat_indices is only set for muted_bar_tap/boss - omitted for
+    // downbeat_tap, which sounds every beat (scheduleClickTrack's default
+    // when no indices are passed). beat_timestamps_ms/beats_per_bar are
+    // always present outside listen_mcq, which we've already returned above.
     clickTrackRef.current = scheduleClickTrack(
-      exercise.beat_timestamps_ms,
-      exercise.beats_per_bar,
+      exercise.beat_timestamps_ms!,
+      exercise.beats_per_bar!,
+      undefined,
+      exercise.audible_beat_indices,
     );
 
     const lastBeat =
-      exercise.beat_timestamps_ms[exercise.beat_timestamps_ms.length - 1] ?? 0;
+      exercise.beat_timestamps_ms![exercise.beat_timestamps_ms!.length - 1] ??
+      0;
     answerTimeoutRef.current = setTimeout(() => {
       setIsPlaying(false);
       setHasPlayedOnce(true);
-      setPhase("answering");
+
+      if (pulseMetreAutoSubmits(exercise.phase)) {
+        finishAttempt({ tap_timestamps_ms: tapTimestampsRef.current });
+      } else {
+        setPhase("answering");
+      }
     }, lastBeat + POST_PLAYBACK_BUFFER_MS);
   };
 
   const handleTap = () => {
     if (!isPlaying || tapStartRef.current === null) return;
-    setTapTimestamps((prev) => [...prev, Date.now() - tapStartRef.current!]);
+    tapTimestampsRef.current = [
+      ...tapTimestampsRef.current,
+      Date.now() - tapStartRef.current,
+    ];
+    setTapTimestamps(tapTimestampsRef.current);
     triggerPulse();
   };
 
   const handleSelectTimeSignature = (option: string) => {
-    if (selectedTimeSignature) return;
+    if (selectedTimeSignature || exercise?.module_type !== "pulse_metre") return;
     setSelectedTimeSignature(option);
-    finishAttempt({
-      tap_timestamps_ms: tapTimestamps,
-      selected_time_signature: option,
-    });
+    // Only the boss phase (Q10) pairs the MCQ with a tap-through - listen_mcq
+    // (Q1-3) is answer-only, no taps to grade.
+    const body: Record<string, unknown> = { selected_time_signature: option };
+    if (exercise.phase === "boss") {
+      body.tap_timestamps_ms = tapTimestampsRef.current;
+    }
+    finishAttempt(body);
   };
 
   // --- Spotting the Difference ----------------------------------------------
@@ -465,10 +573,12 @@ export default function AuralExerciseScreen() {
               {exercise.module_type === "pulse_metre" && (
                 <>
                   <Text style={styles.exerciseHeading}>
-                    Listen to the beat, then tap along
+                    {pulseMetrePhaseHeading(exercise.phase)}
                   </Text>
                   <Text style={styles.exerciseSubtext}>
-                    {exercise.tempo_bpm} BPM · {exercise.bars} bars
+                    {exercise.phase === "listen_mcq"
+                      ? (exercise.clip_label ?? "A real 2-bar clip")
+                      : `${exercise.tempo_bpm} BPM · ${exercise.bars} bars`}
                   </Text>
                 </>
               )}
@@ -507,6 +617,12 @@ export default function AuralExerciseScreen() {
             {/* --- Pulse & Metre interaction --- */}
             {exercise.module_type === "pulse_metre" && (
               <View style={styles.interactionBlock}>
+                {exercise.instruction && (
+                  <Text style={styles.instructionText}>
+                    {exercise.instruction}
+                  </Text>
+                )}
+
                 {!hasPlayedOnce && (
                   <Pressable
                     onPress={handlePlayAndTap}
@@ -515,11 +631,19 @@ export default function AuralExerciseScreen() {
                   >
                     <Play size={16} color={colors.onInk} />
                     <Text style={styles.primaryPillButtonText}>
-                      {isPlaying ? "Listen and tap…" : "Play the Beat"}
+                      {isPlaying
+                        ? exercise.phase === "listen_mcq"
+                          ? "Listening…"
+                          : "Listen and tap…"
+                        : exercise.phase === "listen_mcq"
+                          ? "Play the Clip"
+                          : "Play the Beat"}
                     </Text>
                   </Pressable>
                 )}
-                {isPlaying && (
+
+                {/* listen_mcq is answer-only - no tap button for that phase. */}
+                {isPlaying && exercise.phase !== "listen_mcq" && (
                   <Animated.View style={pulseStyle}>
                     <Pressable
                       onPress={handleTap}
@@ -532,40 +656,62 @@ export default function AuralExerciseScreen() {
                   </Animated.View>
                 )}
 
-                {(phase === "answering" || phase === "feedback") && (
-                  <Animated.View
-                    entering={FadeIn.duration(220)}
-                    style={styles.optionsList}
-                  >
-                    <Text style={styles.questionPrompt}>
-                      {exercise.question.prompt}
-                    </Text>
-                    {exercise.question.options.map((option) => (
-                      <ChoiceButton
-                        key={option}
-                        label={option}
-                        selected={selectedTimeSignature === option}
-                        disabled={!!selectedTimeSignature || isSubmitting}
-                        isCorrectAnswer={
-                          phase === "feedback"
-                            ? result?.correct_answer === option
-                            : undefined
-                        }
-                        onPress={() => handleSelectTimeSignature(option)}
-                        colors={colors}
-                        styles={styles}
-                      />
-                    ))}
-                    {phase === "feedback" &&
-                      typeof result?.score_details?.timing_accuracy_pct ===
-                        "number" && (
-                        <Text style={styles.feedbackStat}>
-                          Rhythm accuracy:{" "}
-                          {result.score_details.timing_accuracy_pct}%
-                        </Text>
-                      )}
-                  </Animated.View>
-                )}
+                {/* listen_mcq/boss: the "2 time or 3 time?" MCQ. */}
+                {(phase === "answering" || phase === "feedback") &&
+                  exercise.question && (
+                    <Animated.View
+                      entering={FadeIn.duration(220)}
+                      style={styles.optionsList}
+                    >
+                      <Text style={styles.questionPrompt}>
+                        {exercise.question.prompt}
+                      </Text>
+                      {exercise.question.options.map((option) => (
+                        <ChoiceButton
+                          key={option}
+                          label={
+                            exercise.question?.option_labels?.[option] ??
+                            option
+                          }
+                          selected={selectedTimeSignature === option}
+                          disabled={!!selectedTimeSignature || isSubmitting}
+                          isCorrectAnswer={
+                            phase === "feedback"
+                              ? result?.correct_answer === option
+                              : undefined
+                          }
+                          onPress={() => handleSelectTimeSignature(option)}
+                          colors={colors}
+                          styles={styles}
+                        />
+                      ))}
+                      {phase === "feedback" &&
+                        typeof result?.score_details?.timing_accuracy_pct ===
+                          "number" && (
+                          <Text style={styles.feedbackStat}>
+                            Rhythm accuracy:{" "}
+                            {result.score_details.timing_accuracy_pct}%
+                          </Text>
+                        )}
+                    </Animated.View>
+                  )}
+
+                {/* downbeat_tap/muted_bar_tap: no MCQ - just the timing feedback
+                    once the auto-submitted attempt comes back. */}
+                {phase === "feedback" &&
+                  !exercise.question &&
+                  typeof result?.score_details?.timing_accuracy_pct ===
+                    "number" && (
+                    <Animated.View
+                      entering={FadeIn.duration(220)}
+                      style={styles.optionsList}
+                    >
+                      <Text style={styles.feedbackStat}>
+                        Rhythm accuracy:{" "}
+                        {result.score_details.timing_accuracy_pct}%
+                      </Text>
+                    </Animated.View>
+                  )}
               </View>
             )}
 
@@ -848,6 +994,24 @@ export default function AuralExerciseScreen() {
               <Text style={styles.resultsXpBadgeText}>+{AURAL_XP} XP</Text>
             </View>
 
+            {exercise.module_type !== "echo_singing" &&
+              (isDebriefLoading || debriefMessage) && (
+                <Animated.View
+                  entering={FadeIn.duration(250)}
+                  style={styles.debriefCard}
+                >
+                  <View style={styles.debriefHeader}>
+                    <Sparkles size={13} color={colors.gold} />
+                    <Text style={styles.debriefHeaderText}>FROM AURA</Text>
+                  </View>
+                  {isDebriefLoading ? (
+                    <ActivityIndicator color={colors.gold} size="small" />
+                  ) : (
+                    <Text style={styles.debriefText}>{debriefMessage}</Text>
+                  )}
+                </Animated.View>
+              )}
+
             <Pressable onPress={handleTryAgain} style={styles.primaryButton}>
               <Text style={styles.primaryButtonText}>Try again</Text>
             </Pressable>
@@ -876,6 +1040,8 @@ function ChoiceButton({
   disabled: boolean;
   compact?: boolean;
   // Set once the result for this round of the round comes back, so the right
+
+  
   // answer highlights green and a wrong pick highlights red - undefined/false
   // while still answering, when there's nothing to reveal yet.
   isCorrectAnswer?: boolean;
@@ -1004,6 +1170,12 @@ const createStyles = (colors: ThemeColors) =>
     },
     exerciseSubtext: { color: colors.textSecondary, fontSize: 13 },
     interactionBlock: { marginTop: 20, gap: 14, alignItems: "center" },
+    instructionText: {
+      color: colors.textSecondary,
+      fontSize: 13,
+      textAlign: "center",
+      lineHeight: 18,
+    },
     primaryPillButton: {
       flexDirection: "row",
       alignItems: "center",
@@ -1145,6 +1317,33 @@ const createStyles = (colors: ThemeColors) =>
       marginBottom: 20,
     },
     resultsXpBadgeText: { color: colors.blue, fontSize: 12, fontWeight: "700" },
+    debriefCard: {
+      width: "100%",
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      marginBottom: 20,
+    },
+    debriefHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 5,
+      marginBottom: 6,
+    },
+    debriefHeaderText: {
+      color: colors.gold,
+      fontSize: 10,
+      letterSpacing: 1.5,
+      fontWeight: "700",
+    },
+    debriefText: {
+      color: colors.textPrimary,
+      fontSize: 13,
+      lineHeight: 19,
+    },
     primaryButton: {
       width: "100%",
       borderRadius: 10,

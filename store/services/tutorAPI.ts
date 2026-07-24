@@ -31,7 +31,6 @@ type TutorHistoryResponse = ApiEnvelope<TutorConversation[]>;
 type TutorConversationsResponse = ApiEnvelope<TutorConversationSummary[]>;
 
 type TutorChatBody = {
-  user_id: number;
   message: string;
   conversation_id?: string;
 };
@@ -45,30 +44,25 @@ type TutorChatResponse = {
 };
 
 type TutorHistoryArgs = {
-  userId: number;
   conversationId?: string | null;
 };
 
-type TutorConversationsArgs = {
-  userId: number;
-};
-
 type ClearTutorHistoryArgs = {
-  userId: number;
   conversationId?: string | null;
 };
 
 export const tutorApi = baseAPI.injectEndpoints({
   endpoints: (build) => ({
     getTutorHistory: build.query<TutorConversation[], TutorHistoryArgs>({
-      query: ({ userId, conversationId }) => {
-        const params = new URLSearchParams({ user_id: String(userId) });
+      query: ({ conversationId }) => {
+        const params = new URLSearchParams();
 
         if (conversationId) {
           params.set("conversation_id", conversationId);
         }
 
-        return `/v1/tutor/history?${params.toString()}`;
+        const qs = params.toString();
+        return `/v1/tutor/history${qs ? `?${qs}` : ""}`;
       },
       transformResponse: (res: TutorHistoryResponse) => res.data ?? [],
       providesTags: (result) =>
@@ -83,11 +77,8 @@ export const tutorApi = baseAPI.injectEndpoints({
           : [{ type: "TutorHistory" as const, id: "LIST" }],
     }),
 
-    getTutorConversations: build.query<
-      TutorConversationSummary[],
-      TutorConversationsArgs
-    >({
-      query: ({ userId }) => `/v1/tutor/conversations?user_id=${userId}`,
+    getTutorConversations: build.query<TutorConversationSummary[], void>({
+      query: () => "/v1/tutor/conversations",
       transformResponse: (res: TutorConversationsResponse) => res.data ?? [],
       providesTags: (result) =>
         result
@@ -117,15 +108,16 @@ export const tutorApi = baseAPI.injectEndpoints({
       { success: boolean; message?: string },
       ClearTutorHistoryArgs
     >({
-      query: ({ userId, conversationId }) => {
-        const params = new URLSearchParams({ user_id: String(userId) });
+      query: ({ conversationId }) => {
+        const params = new URLSearchParams();
 
         if (conversationId) {
           params.set("conversation_id", conversationId);
         }
 
+        const qs = params.toString();
         return {
-          url: `/v1/tutor/history?${params.toString()}`,
+          url: `/v1/tutor/history${qs ? `?${qs}` : ""}`,
           method: "DELETE",
         };
       },
@@ -136,16 +128,12 @@ export const tutorApi = baseAPI.injectEndpoints({
     }),
     deleteConversation: build.mutation<
       { success: boolean; message?: string },
-      { userId: number; conversationId: string }
+      { conversationId: string }
     >({
-      query: ({ userId, conversationId }) => {
-        const params = new URLSearchParams({ user_id: String(userId) });
-
-        return {
-          url: `/v1/tutor/conversations/${conversationId}?${params.toString()}`,
-          method: "DELETE",
-        };
-      },
+      query: ({ conversationId }) => ({
+        url: `/v1/tutor/conversations/${conversationId}`,
+        method: "DELETE",
+      }),
       invalidatesTags: [
         { type: "TutorHistory", id: "LIST" },
         { type: "TutorHistory", id: "CONVERSATIONS" },

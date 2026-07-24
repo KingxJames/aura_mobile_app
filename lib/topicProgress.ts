@@ -1,7 +1,10 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const STORAGE_KEY = "aura:completedTopics:v1";
-const ATTEMPTS_STORAGE_KEY = "aura:topicAttempts:v1";
+// Both keys are namespaced per user id so this device-local cache can never
+// leak one account's topic progress into another account signed in on the
+// same device.
+const STORAGE_KEY_BASE = "aura:completedTopics:v1";
+const ATTEMPTS_STORAGE_KEY_BASE = "aura:topicAttempts:v1";
 
 // A student counts as "struggling" on a topic once they've tried it at
 // least this many times without their best score clearing the threshold.
@@ -18,36 +21,51 @@ export type TopicAttemptRecord = {
 
 type TopicAttemptsMap = Record<string, Record<string, TopicAttemptRecord>>;
 
-async function readAll(): Promise<CompletedTopicsMap> {
+type UserId = string | number;
+
+function scopedKey(base: string, userId: UserId): string {
+  return `${base}:${userId}`;
+}
+
+async function readAll(userId: UserId): Promise<CompletedTopicsMap> {
   try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEY);
+    const raw = await AsyncStorage.getItem(scopedKey(STORAGE_KEY_BASE, userId));
     return raw ? (JSON.parse(raw) as CompletedTopicsMap) : {};
   } catch {
     return {};
   }
 }
 
-export async function getCompletedTopics(quizId: string): Promise<string[]> {
-  const all = await readAll();
+export async function getCompletedTopics(
+  userId: UserId,
+  quizId: string,
+): Promise<string[]> {
+  const all = await readAll(userId);
   return all[quizId] ?? [];
 }
 
 export async function markTopicCompleted(
+  userId: UserId,
   quizId: string,
   topic: string,
 ): Promise<string[]> {
-  const all = await readAll();
+  const all = await readAll(userId);
   const existing = all[quizId] ?? [];
   if (!existing.includes(topic)) {
     all[quizId] = [...existing, topic];
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+    await AsyncStorage.setItem(
+      scopedKey(STORAGE_KEY_BASE, userId),
+      JSON.stringify(all),
+    );
   }
   return all[quizId] ?? existing;
 }
 
-async function readAllAttempts(): Promise<TopicAttemptsMap> {
+async function readAllAttempts(userId: UserId): Promise<TopicAttemptsMap> {
   try {
-    const raw = await AsyncStorage.getItem(ATTEMPTS_STORAGE_KEY);
+    const raw = await AsyncStorage.getItem(
+      scopedKey(ATTEMPTS_STORAGE_KEY_BASE, userId),
+    );
     return raw ? (JSON.parse(raw) as TopicAttemptsMap) : {};
   } catch {
     return {};
@@ -55,27 +73,30 @@ async function readAllAttempts(): Promise<TopicAttemptsMap> {
 }
 
 export async function getTopicAttempts(
+  userId: UserId,
   quizId: string,
   topic: string,
 ): Promise<TopicAttemptRecord | null> {
-  const all = await readAllAttempts();
+  const all = await readAllAttempts(userId);
   return all[quizId]?.[topic] ?? null;
 }
 
 export async function getAllTopicAttempts(
+  userId: UserId,
   quizId: string,
 ): Promise<Record<string, TopicAttemptRecord>> {
-  const all = await readAllAttempts();
+  const all = await readAllAttempts(userId);
   return all[quizId] ?? {};
 }
 
 export async function recordTopicAttempt(
+  userId: UserId,
   quizId: string,
   topic: string,
   correctCount: number,
   totalQuestions: number,
 ): Promise<TopicAttemptRecord> {
-  const all = await readAllAttempts();
+  const all = await readAllAttempts(userId);
   const quizAttempts = all[quizId] ?? {};
   const existing = quizAttempts[topic];
   const scorePercent =
@@ -88,7 +109,10 @@ export async function recordTopicAttempt(
   };
 
   all[quizId] = { ...quizAttempts, [topic]: updated };
-  await AsyncStorage.setItem(ATTEMPTS_STORAGE_KEY, JSON.stringify(all));
+  await AsyncStorage.setItem(
+    scopedKey(ATTEMPTS_STORAGE_KEY_BASE, userId),
+    JSON.stringify(all),
+  );
   return updated;
 }
 
