@@ -11,6 +11,7 @@ import {
   DEFAULT_PITCH,
   diatonicStep,
   Flag,
+  HALF_SPACING,
   HEAD_ROTATION,
   HEAD_RX,
   HEAD_RY,
@@ -38,7 +39,7 @@ export { DEFAULT_PITCH };
 
 export type ArticulationType = "staccato" | "accent" | "tenuto";
 export type DynamicType = "pp" | "p" | "mp" | "mf" | "f" | "ff";
-export type OrnamentType = "fermata";
+export type OrnamentType = "fermata" | "trill" | "turn" | "mordent";
 
 export const NOTE_LABELS: Record<NoteValueType, string> = {
   whole: "Whole note (semibreve)",
@@ -73,6 +74,9 @@ export const DYNAMIC_LABELS: Record<DynamicType, string> = {
 
 export const ORNAMENT_LABELS: Record<OrnamentType, string> = {
   fermata: "fermata (hold)",
+  trill: "trill (rapid alternation with the note above)",
+  turn: "turn (four-note turn around the main note)",
+  mordent: "mordent (quick alternation with the note below)",
 };
 
 // Duration in quarter-note beats, for handing a tagged note to audioSynth's
@@ -87,13 +91,14 @@ export const NOTE_DURATION_BEATS: Record<NoteValueType, number> = {
 
 // Articulation marks come in "Above"/"Below" variants shaped for which side
 // of the notehead they sit on - rendering picks the side opposite the stem
-// (standard engraving convention).
-const ARTIC_GLYPH_ABOVE: Record<ArticulationType, string> = {
+// (standard engraving convention). Exported so NoteSequence.tsx can place the
+// same marks per-note in a phrase instead of duplicating these codepoints.
+export const ARTIC_GLYPH_ABOVE: Record<ArticulationType, string> = {
   staccato: "\u{E4A2}",
   accent: "\u{E4A0}",
   tenuto: "\u{E4A4}",
 };
-const ARTIC_GLYPH_BELOW: Record<ArticulationType, string> = {
+export const ARTIC_GLYPH_BELOW: Record<ArticulationType, string> = {
   staccato: "\u{E4A3}",
   accent: "\u{E4A1}",
   tenuto: "\u{E4A5}",
@@ -107,7 +112,7 @@ const DYNAMIC_LETTER = {
   m: "\u{E521}", // dynamicMezzo
   f: "\u{E522}", // dynamicForte
 };
-const DYNAMIC_GLYPH: Record<DynamicType, string> = {
+export const DYNAMIC_GLYPH: Record<DynamicType, string> = {
   pp: DYNAMIC_LETTER.p + DYNAMIC_LETTER.p,
   p: DYNAMIC_LETTER.p,
   mp: DYNAMIC_LETTER.m + DYNAMIC_LETTER.p,
@@ -116,10 +121,17 @@ const DYNAMIC_GLYPH: Record<DynamicType, string> = {
   ff: DYNAMIC_LETTER.f + DYNAMIC_LETTER.f,
 };
 
-// Only the "Above" fermata is used - always rendered above the whole note
-// (notehead + stem + flag), never tied to stem side the way articulation is.
+// All ornaments render above the whole note construct (notehead, and the
+// stem/flag too when the stem points up) via the shared `fermataY` position
+// below - never tied to stem side the way articulation is. Fermata only has
+// an "Above" variant in SMuFL; trill/turn/mordent are conventionally placed
+// above the staff regardless of stem direction too, so the same fixed
+// placement is correct for all four rather than fermata-specific.
 const ORNAMENT_GLYPH: Record<OrnamentType, string> = {
   fermata: "\u{E4C0}", // fermataAbove
+  trill: "\u{E566}", // ornamentTrill
+  turn: "\u{E567}", // ornamentTurn
+  mordent: "\u{E56D}", // ornamentMordent
 };
 
 const STAFF_RIGHT_X_BASE = 150;
@@ -134,6 +146,7 @@ type Props = {
   pitch?: string;
   clef?: ClefType;
   rest?: boolean;
+  dotted?: boolean;
   artic?: ArticulationType;
   dynamic?: DynamicType;
   ornament?: OrnamentType;
@@ -148,6 +161,7 @@ export default function NoteGlyph({
   pitch,
   clef = "treble",
   rest = false,
+  dotted = false,
   artic,
   dynamic,
   ornament,
@@ -181,6 +195,13 @@ export default function NoteGlyph({
   const stemEndY = stemUp ? noteY - STEM_LENGTH : noteY + STEM_LENGTH;
   const dir: 1 | -1 = stemUp ? 1 : -1;
   const ledgers = rest ? [] : ledgerSteps(step);
+
+  // Augmentation dot for a dotted note/rest, placed just right of the head.
+  // A note sitting ON a staff line (even step) gets nudged up into the space
+  // above it - standard engraving avoids a dot landing directly on a line -
+  // while a note already in a space (odd step), or a rest, needs no nudge.
+  const dotX = noteX + HEAD_RX + 8;
+  const dotY = rest ? STAFF_TOP_Y + REST_TARGET_LINE[type] * STAFF_LINE_SPACING : noteY - (step % 2 === 0 ? HALF_SPACING : 0);
 
   // Articulation sits on the side opposite the stem, in whatever space is
   // clear of the stem/flag.
@@ -230,6 +251,10 @@ export default function NoteGlyph({
   }
   if (showDynamic) {
     bottomCandidates.push(dynamicY + MARK_OFFSET / 2);
+  }
+  if (dotted) {
+    topCandidates.push(dotY - 3);
+    bottomCandidates.push(dotY + 3);
   }
 
   const viewTop = Math.min(...topCandidates) - CANVAS_MARGIN;
@@ -378,6 +403,8 @@ export default function NoteGlyph({
           )}
         </>
       )}
+
+      {dotted && <Ellipse cx={dotX} cy={dotY} rx={2} ry={2} fill={color} />}
     </Svg>
   );
 }

@@ -218,6 +218,138 @@ export async function playTutorPitch(pitch: string, durationBeats: number): Prom
   await playNoteSequence([{ ...parsed, degree: 0, duration_beats: durationBeats }]);
 }
 
+// Letter order for stepping to the next/previous natural letter, and which
+// letters a key signature sharps/flats - same circle-of-fifths order the
+// note tags themselves already use for ",key:N" (sharps: F C G D A E B,
+// flats: B E A D G C F), kept as its own small copy here rather than
+// importing from staffGeometry.tsx, matching how this file already keeps
+// its own NATURAL_SEMITONES table independent of the UI layer.
+const LETTER_ORDER = ["C", "D", "E", "F", "G", "A", "B"];
+const SHARP_LETTERS = ["F", "C", "G", "D", "A", "E", "B"];
+const FLAT_LETTERS = ["B", "E", "A", "D", "G", "C", "F"];
+
+function keySignatureAccidental(letter: string, keySignature: number): "#" | "b" | "" {
+  if (keySignature > 0) return SHARP_LETTERS.slice(0, Math.min(keySignature, 7)).includes(letter) ? "#" : "";
+  if (keySignature < 0) return FLAT_LETTERS.slice(0, Math.min(-keySignature, 7)).includes(letter) ? "b" : "";
+  return "";
+}
+
+/**
+ * The pitch `steps` diatonic letter-steps from `pitch` (1 = next letter up,
+ * -1 = next letter down), spelled with the given key signature's accidental
+ * for that letter - e.g. in D major (key:2) the step above C4 is "C#4", not
+ * "C4", because C is sharped in that key. This is what an ornament's actual
+ * upper/lower neighbor tone is; picking a fixed semitone/whole-tone distance
+ * instead would be wrong in most keys.
+ */
+function diatonicNeighborPitch(pitch: string, steps: 1 | -1, keySignature: number): string | null {
+  const match = /^([A-Ga-g])([#b]?)(-?\d+)$/.exec(pitch.trim());
+  if (!match) return null;
+  const letter = match[1].toUpperCase();
+  const octave = parseInt(match[3], 10);
+
+  const totalIndex = LETTER_ORDER.indexOf(letter) + steps;
+  const nextLetter = LETTER_ORDER[((totalIndex % 7) + 7) % 7];
+  const octaveShift = Math.floor(totalIndex / 7);
+
+  return `${nextLetter}${keySignatureAccidental(nextLetter, keySignature)}${octave + octaveShift}`;
+}
+
+/**
+ * Plays a [[note:...,ornament:X]] tag's ornament as the alternation pattern
+ * it actually represents, instead of one plain sustained tone - a trill
+ * drawn on the staff but heard as a single note is musically wrong, not just
+ * a simplification. Falls back to a plain tone for fermata (a hold has no
+ * alternation to perform) or when no ornament is set.
+ */
+export async function playTutorOrnamentedNote(
+  pitch: string,
+  durationBeats: number,
+  ornament: "fermata" | "trill" | "turn" | "mordent" | undefined,
+  keySignature: number,
+): Promise<void> {
+  if (ornament === "trill") {
+    const upper = diatonicNeighborPitch(pitch, 1, keySignature);
+    if (!upper) return playTutorPitch(pitch, durationBeats);
+    const ALTERNATIONS = 8; // a "rapid" trill speed, independent of the note's own written duration
+    const each = durationBeats / (ALTERNATIONS * 2);
+    for (let i = 0; i < ALTERNATIONS; i++) {
+      await playTutorPitch(pitch, each);
+      await playTutorPitch(upper, each);
+    }
+    return;
+  }
+
+  if (ornament === "turn") {
+    const upper = diatonicNeighborPitch(pitch, 1, keySignature);
+    const lower = diatonicNeighborPitch(pitch, -1, keySignature);
+    if (!upper || !lower) return playTutorPitch(pitch, durationBeats);
+    const each = durationBeats / 4;
+    await playTutorPitch(upper, each);
+    await playTutorPitch(pitch, each);
+    await playTutorPitch(lower, each);
+    await playTutorPitch(pitch, each);
+    return;
+  }
+
+  if (ornament === "mordent") {
+    const lower = diatonicNeighborPitch(pitch, -1, keySignature);
+    if (!lower) return playTutorPitch(pitch, durationBeats);
+    const quick = Math.min(durationBeats / 4, 0.25);
+    await playTutorPitch(pitch, quick);
+    await playTutorPitch(lower, quick);
+    await playTutorPitch(pitch, Math.max(durationBeats - quick * 2, quick));
+    return;
+  }
+
+  await playTutorPitch(pitch, durationBeats);
+}
+
+/**
+ * Plays a [[interval:...]] tag's two pitches - together for a harmonic
+ * interval (each is its own independent Sound, so starting both without
+ * awaiting between them is enough to make them sound simultaneously), or
+ * one after another for a melodic interval.
+ */
+export async function playTutorInterval(
+  pitch1: string,
+  pitch2: string,
+  intervalType: "harmonic" | "melodic",
+  durationBeats: number,
+): Promise<void> {
+  if (intervalType === "harmonic") {
+    await Promise.all([
+      playTutorPitch(pitch1, durationBeats),
+      playTutorPitch(pitch2, durationBeats),
+    ]);
+  } else {
+    await playTutorPitch(pitch1, durationBeats);
+    await playTutorPitch(pitch2, durationBeats);
+  }
+}
+
+/**
+ * Plays a [[chord:...]] tag's 3 pitches together - each is its own Sound
+ * started without awaiting the others, same trick as the harmonic branch of
+ * playTutorInterval above, so all 3 ring out simultaneously.
+ */
+export async function playTutorChord(pitches: string[], durationBeats: number): Promise<void> {
+  await Promise.all(pitches.map((pitch) => playTutorPitch(pitch, durationBeats)));
+}
+
+/**
+ * Plays a [[cadence:...]] tag's 2 chords one after another - each chord
+ * itself plays as simultaneous notes via playTutorChord, and this just waits
+ * out the first chord's full duration (which playTutorChord already blocks
+ * on) before starting the second, so the progression's resolution is audible
+ * rather than both chords firing at once.
+ */
+export async function playTutorCadence(chords: string[][], durationBeats: number): Promise<void> {
+  for (const chord of chords) {
+    await playTutorChord(chord, durationBeats);
+  }
+}
+
 /**
  * Plays a [[sequence:...]] tag's notes/rests in order - the multi-note
  * equivalent of playTutorPitch above. `pitch: null` marks a rest: it just

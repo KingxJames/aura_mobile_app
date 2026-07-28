@@ -27,8 +27,17 @@ import NoteGlyph, {
     REST_LABELS,
 } from "@/components/tutor/NoteGlyph";
 import NoteSequence, { type SequenceToken } from "@/components/tutor/NoteSequence";
+import IntervalGlyph, { intervalLabel } from "@/components/tutor/IntervalGlyph";
+import ChordGlyph, { chordLabel } from "@/components/tutor/ChordGlyph";
+import CadenceGlyph, { cadenceLabel } from "@/components/tutor/CadenceGlyph";
 import { useThemeColors } from "@/hooks/useThemeColors";
-import { playTutorPitch, playTutorSequence } from "@/lib/audioSynth";
+import {
+    playTutorCadence,
+    playTutorChord,
+    playTutorInterval,
+    playTutorOrnamentedNote,
+    playTutorSequence,
+} from "@/lib/audioSynth";
 import { parseTutorContent } from "@/lib/tutorContent";
 import ChatHistoryButton from "./../../components/chatHistory/chatHistoryButton";
 
@@ -112,6 +121,40 @@ const describeKeyAndTime = (
   return parts;
 };
 
+// A tied token's sound continues into the next token rather than re-attacking,
+// so consecutive tied tokens collapse into one sustained playback note with
+// their durations summed (tutorContent.ts's parser already guarantees a tied
+// run shares one pitch, so only the run's total length needs computing here).
+// Triplet tokens each take 2/3 of their written duration (3 in the time of 2).
+const sequenceTokenBeats = (token: SequenceToken) =>
+  NOTE_DURATION_BEATS[token.type] * (token.dotted ? 1.5 : 1) * (token.triplet ? 2 / 3 : 1);
+
+const sequenceToPlaybackNotes = (
+  tokens: SequenceToken[],
+): { pitch: string | null; durationBeats: number }[] => {
+  const notes: { pitch: string | null; durationBeats: number }[] = [];
+  let i = 0;
+  while (i < tokens.length) {
+    const token = tokens[i];
+    if (token.rest) {
+      notes.push({ pitch: null, durationBeats: sequenceTokenBeats(token) });
+      i++;
+      continue;
+    }
+    let totalBeats = sequenceTokenBeats(token);
+    let j = i;
+    while (true) {
+      const current = tokens[j];
+      if (current.rest || !current.tied || j + 1 >= tokens.length) break;
+      j++;
+      totalBeats += sequenceTokenBeats(tokens[j]);
+    }
+    notes.push({ pitch: token.pitch, durationBeats: totalBeats });
+    i = j + 1;
+  }
+  return notes;
+};
+
 export default function TutorScreen() {
   const colors = useThemeColors();
   const [inputText, setInputText] = useState("");
@@ -127,11 +170,17 @@ export default function TutorScreen() {
   // spinner and every other play button in the thread disables while it rings out.
   const [playingNoteKey, setPlayingNoteKey] = useState<string | null>(null);
 
-  const handlePlayNote = async (key: string, pitch: string, durationBeats: number) => {
+  const handlePlayNote = async (
+    key: string,
+    pitch: string,
+    durationBeats: number,
+    ornament?: "fermata" | "trill" | "turn" | "mordent",
+    keySignature: number = 0,
+  ) => {
     if (playingNoteKey) return;
     setPlayingNoteKey(key);
     try {
-      await playTutorPitch(pitch, durationBeats);
+      await playTutorOrnamentedNote(pitch, durationBeats, ornament, keySignature);
     } catch (e) {
       console.error("Failed to play tutor note:", e);
     } finally {
@@ -143,14 +192,50 @@ export default function TutorScreen() {
     if (playingNoteKey) return;
     setPlayingNoteKey(key);
     try {
-      await playTutorSequence(
-        tokens.map((token) => ({
-          pitch: token.rest ? null : token.pitch,
-          durationBeats: NOTE_DURATION_BEATS[token.type],
-        })),
-      );
+      await playTutorSequence(sequenceToPlaybackNotes(tokens));
     } catch (e) {
       console.error("Failed to play tutor sequence:", e);
+    } finally {
+      setPlayingNoteKey(null);
+    }
+  };
+
+  const handlePlayInterval = async (
+    key: string,
+    pitch1: string,
+    pitch2: string,
+    intervalType: "harmonic" | "melodic",
+  ) => {
+    if (playingNoteKey) return;
+    setPlayingNoteKey(key);
+    try {
+      await playTutorInterval(pitch1, pitch2, intervalType, NOTE_DURATION_BEATS.quarter);
+    } catch (e) {
+      console.error("Failed to play tutor interval:", e);
+    } finally {
+      setPlayingNoteKey(null);
+    }
+  };
+
+  const handlePlayChord = async (key: string, pitches: string[]) => {
+    if (playingNoteKey) return;
+    setPlayingNoteKey(key);
+    try {
+      await playTutorChord(pitches, NOTE_DURATION_BEATS.quarter);
+    } catch (e) {
+      console.error("Failed to play tutor chord:", e);
+    } finally {
+      setPlayingNoteKey(null);
+    }
+  };
+
+  const handlePlayCadence = async (key: string, chords: string[][]) => {
+    if (playingNoteKey) return;
+    setPlayingNoteKey(key);
+    try {
+      await playTutorCadence(chords, NOTE_DURATION_BEATS.quarter);
+    } catch (e) {
+      console.error("Failed to play tutor cadence:", e);
     } finally {
       setPlayingNoteKey(null);
     }
@@ -511,6 +596,236 @@ export default function TutorScreen() {
                             );
                           }
 
+                          if (segment.type === "interval") {
+                            const intervalKey = `${item.id}-${index}`;
+                            const isPlayingThisInterval = playingNoteKey === intervalKey;
+                            const intervalCaptionParts = describeKeyAndTime(
+                              segment.keySignature,
+                              segment.timeSignature,
+                            );
+
+                            return (
+                              <View
+                                key={index}
+                                style={{ alignItems: "center", marginVertical: 12 }}
+                              >
+                                <IntervalGlyph
+                                  pitch1={segment.pitch1}
+                                  pitch2={segment.pitch2}
+                                  intervalType={segment.intervalType}
+                                  clef={segment.clef}
+                                  keySignature={segment.keySignature}
+                                  timeSignature={segment.timeSignature}
+                                  color={colors.textPrimary}
+                                />
+                                <Text
+                                  style={{
+                                    fontSize: 12,
+                                    color: colors.textMuted,
+                                    marginTop: 4,
+                                  }}
+                                >
+                                  {intervalLabel(segment.pitch1, segment.pitch2)} — {segment.pitch1} to {segment.pitch2}
+                                  {segment.intervalType === "harmonic" ? " (harmonic)" : " (melodic)"}
+                                  {intervalCaptionParts.map((part) => `, ${part}`).join("")}
+                                </Text>
+                                {segment.play && (
+                                  <Pressable
+                                    onPress={() =>
+                                      handlePlayInterval(
+                                        intervalKey,
+                                        segment.pitch1,
+                                        segment.pitch2,
+                                        segment.intervalType,
+                                      )
+                                    }
+                                    disabled={!!playingNoteKey}
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Play interval"
+                                    style={{
+                                      flexDirection: "row",
+                                      alignItems: "center",
+                                      gap: 6,
+                                      marginTop: 8,
+                                      paddingHorizontal: 14,
+                                      paddingVertical: 8,
+                                      borderRadius: 999,
+                                      borderWidth: 1,
+                                      borderColor: colors.border,
+                                      opacity:
+                                        playingNoteKey && !isPlayingThisInterval ? 0.4 : 1,
+                                    }}
+                                  >
+                                    {isPlayingThisInterval ? (
+                                      <ActivityIndicator
+                                        size="small"
+                                        color={colors.textMuted}
+                                      />
+                                    ) : (
+                                      <Play size={13} color={colors.textPrimary} />
+                                    )}
+                                    <Text
+                                      style={{
+                                        fontSize: 12,
+                                        color: colors.textPrimary,
+                                        fontWeight: "600",
+                                      }}
+                                    >
+                                      {isPlayingThisInterval ? "Playing…" : "Play interval"}
+                                    </Text>
+                                  </Pressable>
+                                )}
+                              </View>
+                            );
+                          }
+
+                          if (segment.type === "chord") {
+                            const chordKey = `${item.id}-${index}`;
+                            const isPlayingThisChord = playingNoteKey === chordKey;
+                            const chordCaptionParts = describeKeyAndTime(
+                              segment.keySignature,
+                              segment.timeSignature,
+                            );
+
+                            return (
+                              <View
+                                key={index}
+                                style={{ alignItems: "center", marginVertical: 12 }}
+                              >
+                                <ChordGlyph
+                                  pitches={segment.pitches}
+                                  clef={segment.clef}
+                                  keySignature={segment.keySignature}
+                                  timeSignature={segment.timeSignature}
+                                  color={colors.textPrimary}
+                                />
+                                <Text
+                                  style={{
+                                    fontSize: 12,
+                                    color: colors.textMuted,
+                                    marginTop: 4,
+                                  }}
+                                >
+                                  {chordLabel(segment.pitches)}
+                                  {chordCaptionParts.map((part) => `, ${part}`).join("")}
+                                </Text>
+                                {segment.play && (
+                                  <Pressable
+                                    onPress={() => handlePlayChord(chordKey, segment.pitches)}
+                                    disabled={!!playingNoteKey}
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Play chord"
+                                    style={{
+                                      flexDirection: "row",
+                                      alignItems: "center",
+                                      gap: 6,
+                                      marginTop: 8,
+                                      paddingHorizontal: 14,
+                                      paddingVertical: 8,
+                                      borderRadius: 999,
+                                      borderWidth: 1,
+                                      borderColor: colors.border,
+                                      opacity:
+                                        playingNoteKey && !isPlayingThisChord ? 0.4 : 1,
+                                    }}
+                                  >
+                                    {isPlayingThisChord ? (
+                                      <ActivityIndicator
+                                        size="small"
+                                        color={colors.textMuted}
+                                      />
+                                    ) : (
+                                      <Play size={13} color={colors.textPrimary} />
+                                    )}
+                                    <Text
+                                      style={{
+                                        fontSize: 12,
+                                        color: colors.textPrimary,
+                                        fontWeight: "600",
+                                      }}
+                                    >
+                                      {isPlayingThisChord ? "Playing…" : "Play chord"}
+                                    </Text>
+                                  </Pressable>
+                                )}
+                              </View>
+                            );
+                          }
+
+                          if (segment.type === "cadence") {
+                            const cadenceKey = `${item.id}-${index}`;
+                            const isPlayingThisCadence = playingNoteKey === cadenceKey;
+                            const cadenceKeySignature = segment.keySignature ?? 0;
+                            const cadenceCaptionParts = describeKeyAndTime(
+                              segment.keySignature,
+                              segment.timeSignature,
+                            );
+
+                            return (
+                              <View
+                                key={index}
+                                style={{ alignItems: "center", marginVertical: 12 }}
+                              >
+                                <CadenceGlyph
+                                  chords={segment.chords}
+                                  clef={segment.clef}
+                                  keySignature={segment.keySignature}
+                                  timeSignature={segment.timeSignature}
+                                  color={colors.textPrimary}
+                                />
+                                <Text
+                                  style={{
+                                    fontSize: 12,
+                                    color: colors.textMuted,
+                                    marginTop: 4,
+                                  }}
+                                >
+                                  {cadenceLabel(segment.chords, cadenceKeySignature)}
+                                  {cadenceCaptionParts.map((part) => `, ${part}`).join("")}
+                                </Text>
+                                {segment.play && (
+                                  <Pressable
+                                    onPress={() => handlePlayCadence(cadenceKey, segment.chords)}
+                                    disabled={!!playingNoteKey}
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Play cadence"
+                                    style={{
+                                      flexDirection: "row",
+                                      alignItems: "center",
+                                      gap: 6,
+                                      marginTop: 8,
+                                      paddingHorizontal: 14,
+                                      paddingVertical: 8,
+                                      borderRadius: 999,
+                                      borderWidth: 1,
+                                      borderColor: colors.border,
+                                      opacity:
+                                        playingNoteKey && !isPlayingThisCadence ? 0.4 : 1,
+                                    }}
+                                  >
+                                    {isPlayingThisCadence ? (
+                                      <ActivityIndicator
+                                        size="small"
+                                        color={colors.textMuted}
+                                      />
+                                    ) : (
+                                      <Play size={13} color={colors.textPrimary} />
+                                    )}
+                                    <Text
+                                      style={{
+                                        fontSize: 12,
+                                        color: colors.textPrimary,
+                                        fontWeight: "600",
+                                      }}
+                                    >
+                                      {isPlayingThisCadence ? "Playing…" : "Play cadence"}
+                                    </Text>
+                                  </Pressable>
+                                )}
+                              </View>
+                            );
+                          }
+
                           const noteClef = segment.clef ?? "treble";
                           const notePitch = segment.pitch ?? DEFAULT_PITCH[noteClef];
                           const noteKey = `${item.id}-${index}`;
@@ -526,6 +841,7 @@ export default function TutorScreen() {
                                 pitch={segment.pitch}
                                 clef={segment.clef}
                                 rest={segment.rest}
+                                dotted={segment.dotted}
                                 artic={segment.artic}
                                 dynamic={segment.dynamic}
                                 ornament={segment.ornament}
@@ -540,6 +856,7 @@ export default function TutorScreen() {
                                   marginTop: 4,
                                 }}
                               >
+                                {segment.dotted ? "Dotted " : ""}
                                 {segment.rest ? REST_LABELS[segment.value] : NOTE_LABELS[segment.value]}
                                 {!segment.rest && segment.pitch ? ` — ${segment.pitch}` : ""}
                                 {!segment.rest && segment.artic ? `, ${ARTICULATION_LABELS[segment.artic]}` : ""}
@@ -555,7 +872,9 @@ export default function TutorScreen() {
                                     handlePlayNote(
                                       noteKey,
                                       notePitch,
-                                      NOTE_DURATION_BEATS[segment.value],
+                                      NOTE_DURATION_BEATS[segment.value] * (segment.dotted ? 1.5 : 1),
+                                      segment.ornament,
+                                      segment.keySignature ?? 0,
                                     )
                                   }
                                   disabled={!!playingNoteKey}
