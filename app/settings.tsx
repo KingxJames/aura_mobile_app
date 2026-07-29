@@ -18,7 +18,15 @@ import Constants from "expo-constants";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import { useRouter } from "expo-router";
-import { ArrowLeft, Bell, Lock, Moon, LogOut, User } from "lucide-react-native";
+import {
+  ArrowLeft,
+  Bell,
+  Lock,
+  Moon,
+  LogOut,
+  User,
+  Users,
+} from "lucide-react-native";
 import React, { useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -109,6 +117,10 @@ export default function SettingsScreen() {
 
   const handleEditProfile = () => {
     router.push("/profile");
+  };
+
+  const handleOpenStudyConsent = () => {
+    router.push("/study-consent");
   };
 
   const handleLogout = async () => {
@@ -376,6 +388,30 @@ export default function SettingsScreen() {
                 thumbColor={colors.onInk}
               />
             )}
+          </View>
+        </View>
+
+        <View style={styles.card}>
+          <View style={styles.cardTitleRow}>
+            <Users size={16} color={colors.textPrimary} />
+            <Text style={styles.cardTitle}>Research study</Text>
+          </View>
+
+          <Text style={styles.fieldLabel}>
+            Help improve Aura by joining an optional study on AI-assisted
+            practice feedback.
+          </Text>
+
+          <View style={styles.buttonRow}>
+            <Pressable
+              onPress={handleOpenStudyConsent}
+              style={({ pressed }) => [
+                styles.outlineButton,
+                pressed && styles.outlineButtonPressed,
+              ]}
+            >
+              <Text style={styles.outlineButtonText}>Learn more</Text>
+            </Pressable>
           </View>
         </View>
 

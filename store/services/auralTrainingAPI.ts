@@ -10,7 +10,8 @@ export type AuralModuleType =
   | "pulse_metre"
   | "echo_singing"
   | "spot_difference"
-  | "musical_features";
+  | "musical_features"
+  | "transcription";
 
 // Matches AuralExerciseGeneratorService's degreeToNote() output on the backend.
 export type NoteEvent = {
@@ -117,11 +118,45 @@ export type MusicalFeaturesExercise = {
   ground_truth: { dynamic: "forte" | "piano"; articulation: "legato" | "staccato" };
 };
 
+export type TranscriptionExercise = {
+  exercise_id: number;
+  grade_id: string;
+  module_type: "transcription";
+  key: string;
+  note_sequence: NoteEvent[];
+  ground_truth: { note_sequence: NoteEvent[] };
+};
+
 export type AuralExercise =
   | PulseMetreExercise
   | EchoSingingExercise
   | SpotDifferenceExercise
-  | MusicalFeaturesExercise;
+  | MusicalFeaturesExercise
+  | TranscriptionExercise;
+
+// Only the fields a submitted note needs - the generator's degree/octave_offset
+// are backend-internal, not required by AuralModuleController::gradeTranscription.
+export type SubmittedNote = {
+  note_name: string;
+  octave: number;
+  duration_beats: number;
+};
+
+export type TranscriptionScoreDetails = {
+  correctness_pct: number;
+  alignment_cost: number;
+  is_correct: boolean;
+  elapsed_ms: number;
+  speed_valid: boolean;
+};
+
+export type TranscriptionUnlockStatus = {
+  unlocked: boolean;
+  reason: string;
+  current_avg_cents: number | null;
+  threshold_cents: number | null;
+  attempts_so_far: number | null;
+};
 
 type GenerateExerciseArgs = {
   moduleType: AuralModuleType;
@@ -164,6 +199,13 @@ export type AuralHelpBody = {
 
 export const auralTrainingApi = baseAPI.injectEndpoints({
   endpoints: (build) => ({
+    getTranscriptionUnlockStatus: build.query<TranscriptionUnlockStatus, void>({
+      query: () => "/v1/aural/modules/transcription/unlock-status",
+      transformResponse: (res: ApiEnvelope<TranscriptionUnlockStatus>) =>
+        res.data as TranscriptionUnlockStatus,
+      providesTags: [{ type: "AuralExercise", id: "TRANSCRIPTION_UNLOCK" }],
+    }),
+
     // Implemented as a mutation (not a query) even though it's a GET request -
     // every call must generate a brand new procedural exercise server-side,
     // and RTK Query's query cache would otherwise hand back a stale one on replay.
@@ -205,6 +247,7 @@ export const auralTrainingApi = baseAPI.injectEndpoints({
 });
 
 export const {
+  useGetTranscriptionUnlockStatusQuery,
   useGenerateAuralExerciseMutation,
   useSubmitAuralAttemptMutation,
   useGetAuralDebriefMutation,

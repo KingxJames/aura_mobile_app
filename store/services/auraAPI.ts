@@ -24,8 +24,22 @@ type GetAuralAttemptsArgs = {
   userId: number;
 };
 
+// React Native's FormData accepts a { uri, name, type } part instead of a Web
+// File/Blob - the DOM lib types don't know this shape, so callers cast to
+// Blob when appending (same pattern as app/aural-training/exercise.tsx). On
+// Expo web, FormData is the real browser API and does NOT understand that
+// shape (it just stringifies to "[object Object]") - callers there must
+// resolve the recording to a real Blob first (see toAudioFormPart in
+// app/aural-practice.tsx) and pass that instead.
+type RNFilePart = {
+  uri: string;
+  name: string;
+  type: string;
+};
+
 type AnalyzeAuralBody = {
-  audioFile: File;
+  audioFile: RNFilePart | Blob;
+  audioFileName?: string;
   targetNote: string;
 };
 
@@ -85,9 +99,18 @@ export const auralApi = baseAPI.injectEndpoints({
     }),
 
     analyzeAuralAudio: build.mutation<AuralAnalysisResult, AnalyzeAuralBody>({
-      query: ({ audioFile, targetNote }) => {
+      query: ({ audioFile, audioFileName, targetNote }) => {
         const formData = new FormData();
-        formData.append("audio", audioFile);
+
+        // Real Blob (web, resolved from the recording's blob: URI) needs an
+        // explicit filename arg; the RN { uri, name, type } shape (native)
+        // already carries its own name and appends as a 2-arg call.
+        if (audioFile instanceof Blob) {
+          formData.append("audio", audioFile, audioFileName ?? "audio.m4a");
+        } else {
+          formData.append("audio", audioFile as unknown as Blob);
+        }
+
         formData.append("target_note", targetNote);
 
         return {

@@ -54,6 +54,7 @@ export const baseAPI = createApi({
     "AuralExercise",
     "TutorHistory",
     "Transcription",
+    "Study",
   ],
   endpoints: (_) => ({}),
 });

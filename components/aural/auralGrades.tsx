@@ -133,7 +133,14 @@ function AuralGradeCard({ grade, index, colors, styles }: GradeCardProps) {
   );
 }
 
-export default function AuralGrades() {
+type AuralGradesProps = {
+  // Rendered between the header and the grade list - lets a parent screen
+  // (e.g. the Aural tab) inject extra content without fighting this
+  // component's own header-clearance padding / ScrollView ownership.
+  children?: React.ReactNode;
+};
+
+export default function AuralGrades({ children }: AuralGradesProps) {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
   const colors = useThemeColors();
@@ -168,6 +175,8 @@ export default function AuralGrades() {
             Ear-training games, organized by grade
           </Text>
         </View>
+
+        {children}
 
         {isLoading && (
           <View style={styles.centerState}>

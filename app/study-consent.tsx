@@ -1,0 +1,310 @@
+import {
+  useEnrollInStudyMutation,
+  useGetStudyStatusQuery,
+} from "@/store/services/studyAPI";
+import { useThemeColors } from "@/hooks/useThemeColors";
+import type { ThemeColors } from "@/constants/Colors";
+import { useRouter } from "expo-router";
+import { ArrowLeft, Check, Users } from "lucide-react-native";
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+export default function StudyConsentScreen() {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
+  const [hasAgreed, setHasAgreed] = useState(false);
+  const [status, setStatus] = useState<
+    "idle" | "enrolled" | "already_enrolled" | "error"
+  >("idle");
+  const [enrollInStudy, { isLoading }] = useEnrollInStudyMutation();
+  const { data: statusData, isLoading: isCheckingStatus } =
+    useGetStudyStatusQuery();
+
+  // Skip straight to the confirmation view if the status check finds the
+  // user is already enrolled - don't make them re-run the consent form
+  // just to hit a 409 on submit.
+  useEffect(() => {
+    if (statusData?.enrolled) {
+      setStatus("already_enrolled");
+    }
+  }, [statusData?.enrolled]);
+
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/settings");
+    }
+  };
+
+  const handleJoin = async () => {
+    try {
+      await enrollInStudy({ consent: true }).unwrap();
+      setStatus("enrolled");
+    } catch (error: any) {
+      if (error?.status === 409) {
+        setStatus("already_enrolled");
+      } else {
+        setStatus("error");
+      }
+    }
+  };
+
+  const isDone = status === "enrolled" || status === "already_enrolled";
+
+  return (
+    <View style={[styles.screen, { paddingTop: insets.top }]}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <Pressable
+          onPress={handleBack}
+          style={styles.breadcrumb}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+        >
+          <ArrowLeft size={15} color={colors.textSecondary} />
+          <Text style={styles.breadcrumbText}>Settings</Text>
+        </Pressable>
+
+        <Text style={styles.eyebrow}>RESEARCH STUDY</Text>
+        <Text style={styles.heading}>Help Improve Aura</Text>
+        <Text style={styles.subheading}>
+          An optional study on AI-assisted practice feedback.
+        </Text>
+
+        <View style={styles.card}>
+          <View style={styles.cardTitleRow}>
+            <Users size={16} color={colors.textPrimary} />
+            <Text style={styles.cardTitle}>What this involves</Text>
+          </View>
+
+          <Text style={styles.bodyText}>
+            Aura is running a research study evaluating whether AI-generated
+            feedback improves pitch accuracy for beginner music students,
+            compared to the app&apos;s standard feedback.
+          </Text>
+
+          <Text style={styles.bodyText}>
+            If you join, you&apos;ll keep using the Aural Training tab as
+            normal. You&apos;ll be randomly assigned to one of two versions of
+            the practice experience. To keep the study valid, you won&apos;t
+            be told which version you&apos;re using.
+          </Text>
+
+          <Text style={styles.bodyText}>
+            We&apos;ll record your practice attempts (audio, pitch accuracy,
+            and timing) and any optional feedback you choose to leave, for
+            research analysis.
+          </Text>
+
+          <Text style={styles.bodyText}>
+            Participation is completely voluntary. Declining doesn&apos;t
+            affect your normal use of Aura, and you can stop participating at
+            any time.
+          </Text>
+
+          <Text style={styles.disclaimerText}>
+            This study has been reviewed under [Institution]&apos;s research
+            ethics guidelines. Questions? Contact [email].
+          </Text>
+        </View>
+
+        {isCheckingStatus ? (
+          <View style={styles.card}>
+            <ActivityIndicator color={colors.ink} />
+          </View>
+        ) : !isDone ? (
+          <>
+            <Pressable
+              onPress={() => setHasAgreed((prev) => !prev)}
+              style={styles.consentRow}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: hasAgreed }}
+            >
+              <View
+                style={[
+                  styles.checkbox,
+                  hasAgreed && styles.checkboxChecked,
+                ]}
+              >
+                {hasAgreed ? <Check size={14} color={colors.onInk} /> : null}
+              </View>
+              <Text style={styles.consentText}>
+                I have read the above and agree to participate.
+              </Text>
+            </Pressable>
+
+            {status === "error" ? (
+              <Text style={styles.formMessageError}>
+                Something went wrong. Please try again.
+              </Text>
+            ) : null}
+
+            <Pressable
+              onPress={handleJoin}
+              disabled={!hasAgreed || isLoading}
+              style={({ pressed }) => [
+                styles.saveButton,
+                pressed && styles.saveButtonPressed,
+                (!hasAgreed || isLoading) && styles.saveButtonDisabled,
+              ]}
+            >
+              {isLoading ? (
+                <ActivityIndicator color={colors.onInk} />
+              ) : (
+                <Text style={styles.saveButtonText}>Join the study</Text>
+              )}
+            </Pressable>
+          </>
+        ) : (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>
+              {status === "already_enrolled"
+                ? "You're already part of this study"
+                : "You're enrolled"}
+            </Text>
+            <Text style={styles.bodyText}>
+              Thanks for helping improve Aura. Just keep using the app as you
+              normally would.
+            </Text>
+          </View>
+        )}
+      </ScrollView>
+    </View>
+  );
+}
+
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    screen: {
+      flex: 1,
+      backgroundColor: colors.bg,
+    },
+    scrollContent: {
+      paddingHorizontal: 20,
+      paddingBottom: 60,
+    },
+    breadcrumb: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      marginTop: 14,
+      marginBottom: 18,
+    },
+    breadcrumbText: {
+      color: colors.textSecondary,
+      fontSize: 13,
+      fontWeight: "600",
+    },
+    eyebrow: {
+      fontSize: 12,
+      fontWeight: "700",
+      letterSpacing: 1.2,
+      color: colors.gold,
+    },
+    heading: {
+      fontFamily: "Georgia",
+      fontSize: 30,
+      fontWeight: "700",
+      color: colors.textPrimary,
+      marginTop: 4,
+    },
+    subheading: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginTop: 4,
+      marginBottom: 18,
+    },
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 20,
+      marginBottom: 16,
+    },
+    cardTitleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      marginBottom: 16,
+    },
+    cardTitle: {
+      fontFamily: "Georgia",
+      fontSize: 18,
+      fontWeight: "700",
+      color: colors.textPrimary,
+    },
+    bodyText: {
+      fontSize: 14,
+      lineHeight: 21,
+      color: colors.textPrimary,
+      marginBottom: 14,
+    },
+    disclaimerText: {
+      fontSize: 12,
+      lineHeight: 18,
+      color: colors.textMuted,
+      fontStyle: "italic",
+    },
+    consentRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      marginBottom: 16,
+    },
+    checkbox: {
+      width: 22,
+      height: 22,
+      borderRadius: 5,
+      borderWidth: 1.5,
+      borderColor: colors.border,
+      backgroundColor: colors.surfaceAlt,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    checkboxChecked: {
+      backgroundColor: colors.ink,
+      borderColor: colors.ink,
+    },
+    consentText: {
+      flex: 1,
+      fontSize: 14,
+      color: colors.textPrimary,
+    },
+    formMessageError: {
+      fontSize: 13,
+      color: colors.danger,
+      marginBottom: 12,
+    },
+    saveButton: {
+      borderRadius: 8,
+      backgroundColor: colors.ink,
+      paddingVertical: 15,
+      alignItems: "center",
+    },
+    saveButtonPressed: {
+      opacity: 0.9,
+    },
+    saveButtonDisabled: {
+      opacity: 0.5,
+    },
+    saveButtonText: {
+      color: colors.onInk,
+      fontSize: 16,
+      fontWeight: "700",
+    },
+  });
