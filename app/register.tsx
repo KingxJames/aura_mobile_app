@@ -80,7 +80,9 @@ export default function Register() {
         return;
       }
 
-      router.replace("/(tabs)/grades");
+      // Brand-new account - guaranteed to never have seen the consent
+      // screen, so no need to check study status first.
+      router.replace("/study-consent");
     } catch {
       // handled by registerError render state
     }

@@ -1,3 +1,4 @@
+import { useGetStudyStatusQuery } from "@/store/services/studyAPI";
 import { useRouter } from "expo-router";
 import React, { useEffect, useMemo } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
@@ -14,10 +15,22 @@ export default function RootIndex() {
   const isAuthenticated = useSelector(
     (state: RootState) => state.auth.isAuthenticated,
   );
+  // Tracked server-side per account (not a device-local flag), so switching
+  // devices or a second account on the same device behaves correctly.
+  const { data: studyStatus, isFetching: isCheckingStudyStatus } =
+    useGetStudyStatusQuery(undefined, { skip: !isAuthenticated });
 
   useEffect(() => {
-    router.replace(isAuthenticated ? "/(tabs)/grades" : "/login");
-  }, [isAuthenticated, router]);
+    if (!isAuthenticated) {
+      router.replace("/login");
+      return;
+    }
+    if (isCheckingStudyStatus) return;
+
+    router.replace(
+      studyStatus?.prompt_seen ? "/(tabs)/grades" : "/study-consent",
+    );
+  }, [isAuthenticated, studyStatus, isCheckingStudyStatus, router]);
 
   return (
     <SafeAreaView style={styles.safeArea}>

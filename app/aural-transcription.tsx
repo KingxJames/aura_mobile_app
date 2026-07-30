@@ -8,6 +8,7 @@ import {
   type TranscriptionScoreDetails,
 } from "@/store/services/auralTrainingAPI";
 import { useGetCurriculumQuery } from "@/store/services/curriculumAPI";
+import { useSubmitFeedbackMutation } from "@/store/services/feedbackAPI";
 import { useThemeColors } from "@/hooks/useThemeColors";
 import type { ThemeColors } from "@/constants/Colors";
 import { Audio } from "expo-av";
@@ -17,6 +18,7 @@ import {
   Delete,
   Lock,
   Music,
+  Star,
   Trash2,
   Volume2,
 } from "lucide-react-native";
@@ -27,6 +29,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -35,10 +38,10 @@ const PITCH_CLASSES = [
   "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B",
 ];
 
-const DURATION_OPTIONS: { label: string; value: number; a11y: string }[] = [
-  { label: "♩", value: 1.0, a11y: "Quarter note" },
-  { label: "♪", value: 0.5, a11y: "Eighth note" },
-];
+// Rhythm isn't scored (see AuralModuleController::noteMismatchCost - pitch/
+// octave only), so every submitted note just uses a fixed placeholder
+// duration. The backend's validation still requires the field to be present.
+const SUBMITTED_NOTE_DURATION_BEATS = 1.0;
 
 // Metro requires static require() paths - generated via scripts/generate-tones.js.
 // Covers octaves 3-5 since the backend's stepwise-melody generator can land
@@ -90,6 +93,13 @@ function formatSequence(notes: { note_name: string; octave: number }[]): string 
   return notes.map((n) => `${n.note_name}${n.octave}`).join(" · ");
 }
 
+// Friendlier stand-in for the raw "cents" unit - 0 cents (perfect) -> 100%,
+// 100+ cents off -> 0%. Purely a display transform; the backend's actual
+// threshold comparison still runs on raw cents.
+function centsToConsistencyPercent(cents: number): number {
+  return Math.max(0, Math.min(100, Math.round(100 - cents)));
+}
+
 export default function AuralTranscriptionScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -107,19 +117,30 @@ export default function AuralTranscriptionScreen() {
     useGenerateAuralExerciseMutation();
   const [submitAttempt, { isLoading: isSubmittingAttempt }] =
     useSubmitAuralAttemptMutation();
+  const [submitFeedback, { isLoading: isSubmittingFeedback }] =
+    useSubmitFeedbackMutation();
 
   const [exercise, setExercise] = useState<TranscriptionExercise | null>(null);
   const [genError, setGenError] = useState<string | null>(null);
   const [isPlayingSequence, setIsPlayingSequence] = useState(false);
   const [builtSequence, setBuiltSequence] = useState<SubmittedNote[]>([]);
   const [selectedOctave, setSelectedOctave] = useState(4);
-  const [selectedDuration, setSelectedDuration] = useState(1.0);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [result, setResult] = useState<{
+    attemptId: number | null;
     isCorrect: boolean;
     scoreDetails: TranscriptionScoreDetails;
     correctAnswer: NoteEvent[];
   } | null>(null);
+
+  // Post-attempt qualitative feedback - same pattern as Free Practice, just
+  // attached to this AuralModuleAttempt ("module_attempt") instead.
+  const [selectedRating, setSelectedRating] = useState(0);
+  const [feedbackComment, setFeedbackComment] = useState("");
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+  const [feedbackSubmitError, setFeedbackSubmitError] = useState<
+    string | null
+  >(null);
 
   const soundsRef = useRef<Audio.Sound[]>([]);
 
@@ -181,10 +202,30 @@ export default function AuralTranscriptionScreen() {
     }
   };
 
+  // Fire-and-forget preview so tapping through several notes in a row still
+  // feels instant, unlike playSequence which deliberately waits between notes.
+  const playNotePreview = (pitchClass: string, octave: number) => {
+    const key = `${pitchClass}${octave}`;
+    const asset = SEQUENCE_TONE_ASSETS[key];
+    if (!asset) return;
+
+    Audio.Sound.createAsync(asset)
+      .then(({ sound }) => {
+        soundsRef.current.push(sound);
+        sound.playAsync();
+      })
+      .catch(() => {});
+  };
+
   const handleAddNote = (pitchClass: string) => {
+    playNotePreview(pitchClass, selectedOctave);
     setBuiltSequence((prev) => [
       ...prev,
-      { note_name: pitchClass, octave: selectedOctave, duration_beats: selectedDuration },
+      {
+        note_name: pitchClass,
+        octave: selectedOctave,
+        duration_beats: SUBMITTED_NOTE_DURATION_BEATS,
+      },
     ]);
   };
 
@@ -207,6 +248,7 @@ export default function AuralTranscriptionScreen() {
       }).unwrap();
 
       setResult({
+        attemptId: res.attempt_id ?? null,
         isCorrect: !!res.is_correct,
         scoreDetails: res.score_details as unknown as TranscriptionScoreDetails,
         correctAnswer: (res.correct_answer as unknown as NoteEvent[]) ?? [],
@@ -222,11 +264,29 @@ export default function AuralTranscriptionScreen() {
     setExercise(null);
     setResult(null);
     setBuiltSequence([]);
+    setSelectedRating(0);
+    setFeedbackComment("");
+    setFeedbackSubmitted(false);
+    setFeedbackSubmitError(null);
     handleStartExercise();
   };
 
-  const durationLabel = (beats: number) =>
-    DURATION_OPTIONS.find((d) => d.value === beats)?.label ?? "";
+  const handleSubmitFeedback = async () => {
+    if (!result?.attemptId || selectedRating === 0) return;
+
+    setFeedbackSubmitError(null);
+    try {
+      await submitFeedback({
+        feedbackable_type: "module_attempt",
+        feedbackable_id: result.attemptId,
+        rating: selectedRating,
+        comment: feedbackComment.trim() || undefined,
+      }).unwrap();
+      setFeedbackSubmitted(true);
+    } catch {
+      setFeedbackSubmitError("Couldn't submit feedback. Try again.");
+    }
+  };
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
@@ -264,17 +324,47 @@ export default function AuralTranscriptionScreen() {
               Keep practicing in Free Practice to build your audiation skill
               before Transcription unlocks.
             </Text>
+
             {unlockStatus?.current_avg_cents !== null &&
-            unlockStatus?.current_avg_cents !== undefined ? (
-              <Text style={styles.progressText}>
-                Current average: {unlockStatus.current_avg_cents} cents · need
-                ≤{unlockStatus.threshold_cents} cents
-              </Text>
+            unlockStatus?.current_avg_cents !== undefined &&
+            unlockStatus?.threshold_cents !== null &&
+            unlockStatus?.threshold_cents !== undefined ? (
+              (() => {
+                const currentPercent = centsToConsistencyPercent(
+                  unlockStatus.current_avg_cents,
+                );
+                const goalPercent = centsToConsistencyPercent(
+                  unlockStatus.threshold_cents,
+                );
+                return (
+                  <>
+                    <View style={styles.unlockProgressTrack}>
+                      <View
+                        style={[
+                          styles.unlockProgressFill,
+                          { width: `${currentPercent}%` },
+                        ]}
+                      />
+                      <View
+                        style={[
+                          styles.unlockGoalMarker,
+                          { left: `${goalPercent}%` },
+                        ]}
+                      />
+                    </View>
+                    <Text style={styles.progressText}>
+                      You&apos;re {currentPercent}% consistent - reach{" "}
+                      {goalPercent}% to unlock
+                    </Text>
+                  </>
+                );
+              })()
             ) : (
               <Text style={styles.progressText}>
                 No practice attempts yet - head to Free Practice to get started.
               </Text>
             )}
+
             {unlockStatus?.attempts_so_far !== null &&
             unlockStatus?.attempts_so_far !== undefined ? (
               <Text style={styles.progressText}>
@@ -350,12 +440,27 @@ export default function AuralTranscriptionScreen() {
                       <Text style={styles.sequenceChipText}>
                         {note.note_name}
                         {note.octave}
-                        {durationLabel(note.duration_beats)}
                       </Text>
                     </View>
                   ))
                 )}
               </View>
+
+              <Pressable
+                onPress={() => playSequence(builtSequence)}
+                disabled={builtSequence.length === 0 || isPlayingSequence}
+                style={({ pressed }) => [
+                  styles.replayButton,
+                  pressed && styles.recordButtonPressed,
+                  (builtSequence.length === 0 || isPlayingSequence) &&
+                    styles.saveButtonDisabled,
+                ]}
+              >
+                <Volume2 size={16} color={colors.ink} />
+                <Text style={styles.replayButtonText}>
+                  {isPlayingSequence ? "Playing…" : "Play my notation"}
+                </Text>
+              </Pressable>
 
               <View style={styles.builderControlsRow}>
                 <Text style={styles.controlLabel}>Octave</Text>
@@ -375,32 +480,6 @@ export default function AuralTranscriptionScreen() {
                       ]}
                     >
                       {octave}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-
-              <View style={styles.builderControlsRow}>
-                <Text style={styles.controlLabel}>Note value</Text>
-                {DURATION_OPTIONS.map((option) => (
-                  <Pressable
-                    key={option.value}
-                    onPress={() => setSelectedDuration(option.value)}
-                    accessibilityLabel={option.a11y}
-                    style={[
-                      styles.smallToggle,
-                      selectedDuration === option.value &&
-                        styles.smallToggleActive,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.smallToggleText,
-                        selectedDuration === option.value &&
-                          styles.smallToggleTextActive,
-                      ]}
-                    >
-                      {option.label}
                     </Text>
                   </Pressable>
                 ))}
@@ -483,6 +562,75 @@ export default function AuralTranscriptionScreen() {
             <Text style={styles.progressText}>
               Correct pattern: {formatSequence(result.correctAnswer)}
             </Text>
+
+            <View style={styles.feedbackDivider} />
+
+            {feedbackSubmitted ? (
+              <Text style={styles.feedbackThanksText}>
+                Thanks for the feedback!
+              </Text>
+            ) : (
+              <View style={styles.feedbackSection}>
+                <Text style={styles.feedbackPrompt}>
+                  How was this exercise?
+                </Text>
+
+                <View style={styles.starRow}>
+                  {[1, 2, 3, 4, 5].map((value) => (
+                    <Pressable
+                      key={value}
+                      onPress={() => setSelectedRating(value)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Rate ${value} out of 5`}
+                      hitSlop={6}
+                    >
+                      <Star
+                        size={26}
+                        color={colors.gold}
+                        fill={value <= selectedRating ? colors.gold : "transparent"}
+                      />
+                    </Pressable>
+                  ))}
+                </View>
+
+                {selectedRating > 0 ? (
+                  <>
+                    <TextInput
+                      value={feedbackComment}
+                      onChangeText={setFeedbackComment}
+                      placeholder="Anything else? (optional)"
+                      placeholderTextColor={colors.textMuted}
+                      style={styles.feedbackInput}
+                      multiline
+                    />
+
+                    {feedbackSubmitError ? (
+                      <Text style={styles.formMessageError}>
+                        {feedbackSubmitError}
+                      </Text>
+                    ) : null}
+
+                    <Pressable
+                      onPress={handleSubmitFeedback}
+                      disabled={isSubmittingFeedback}
+                      style={({ pressed }) => [
+                        styles.feedbackSubmitButton,
+                        pressed && styles.recordButtonPressed,
+                        isSubmittingFeedback && styles.saveButtonDisabled,
+                      ]}
+                    >
+                      {isSubmittingFeedback ? (
+                        <ActivityIndicator color={colors.ink} />
+                      ) : (
+                        <Text style={styles.feedbackSubmitButtonText}>
+                          Submit feedback
+                        </Text>
+                      )}
+                    </Pressable>
+                  </>
+                ) : null}
+              </View>
+            )}
 
             <Pressable
               onPress={handleTryAnother}
@@ -572,6 +720,30 @@ const createStyles = (colors: ThemeColors) =>
       color: colors.textSecondary,
       marginBottom: 6,
     },
+    unlockProgressTrack: {
+      height: 10,
+      borderRadius: 5,
+      backgroundColor: colors.surfaceAlt,
+      borderWidth: 1,
+      borderColor: colors.border,
+      overflow: "visible",
+      marginBottom: 10,
+      marginTop: 4,
+    },
+    unlockProgressFill: {
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: colors.gold,
+    },
+    unlockGoalMarker: {
+      position: "absolute",
+      top: -4,
+      width: 3,
+      height: 18,
+      borderRadius: 2,
+      backgroundColor: colors.textPrimary,
+      marginLeft: -1,
+    },
     formMessageError: {
       fontSize: 13,
       color: colors.danger,
@@ -587,6 +759,7 @@ const createStyles = (colors: ThemeColors) =>
       borderWidth: 1,
       borderColor: colors.border,
       backgroundColor: colors.surfaceAlt,
+      marginBottom: 16,
     },
     replayButtonText: {
       fontSize: 13,
@@ -713,6 +886,61 @@ const createStyles = (colors: ThemeColors) =>
       fontSize: 22,
       fontWeight: "700",
       color: colors.textPrimary,
+      textAlign: "center",
+      marginBottom: 16,
+    },
+    feedbackDivider: {
+      height: 1,
+      backgroundColor: colors.border,
+      marginBottom: 16,
+    },
+    feedbackSection: {
+      marginBottom: 16,
+    },
+    feedbackPrompt: {
+      fontSize: 13,
+      fontWeight: "700",
+      color: colors.textPrimary,
+      textAlign: "center",
+      marginBottom: 10,
+    },
+    starRow: {
+      flexDirection: "row",
+      justifyContent: "center",
+      gap: 8,
+      marginBottom: 4,
+    },
+    feedbackInput: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 8,
+      backgroundColor: colors.surfaceAlt,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      color: colors.textPrimary,
+      fontSize: 14,
+      minHeight: 60,
+      textAlignVertical: "top",
+      marginTop: 14,
+      marginBottom: 10,
+    },
+    feedbackSubmitButton: {
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surfaceAlt,
+      paddingVertical: 12,
+      alignItems: "center",
+    },
+    feedbackSubmitButtonText: {
+      color: colors.ink,
+      fontSize: 14,
+      fontWeight: "700",
+    },
+    feedbackThanksText: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: colors.success,
       textAlign: "center",
       marginBottom: 16,
     },

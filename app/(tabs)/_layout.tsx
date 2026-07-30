@@ -10,11 +10,9 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 import PlatformIcon from "../../components/platformIcon/platformIcon";
 import UserDropdownMenu from "../../components/userDropdownMenu/userDropdownMenu";
-import StudyPromptModal from "../../components/studyPromptModal/studyPromptModal";
-import { markStudyPromptSeen } from "../../store/features/appUiSlice";
 import { API_HOST } from "../../store/services/config/api";
 import type { RootState } from "../../store/store";
 import { useThemeColors } from "@/hooks/useThemeColors";
@@ -29,11 +27,7 @@ export default function TabLayout() {
   const { width } = useWindowDimensions();
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const dispatch = useDispatch();
   const user = useSelector((state: RootState) => state.auth.user);
-  const hasSeenStudyPrompt = useSelector(
-    (state: RootState) => state.appUi.hasSeenStudyPrompt,
-  );
   const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
@@ -229,16 +223,10 @@ export default function TabLayout() {
         <Tabs.Screen
           name="transcriber"
           options={{
-            title: "Transcriber",
-            tabBarLabel: "Reader",
-            tabBarIcon: ({ color }) => (
-              <PlatformIcon
-                ios="camera.metering.matrix"
-                name="photo-camera"
-                color={color}
-                size={tabIconSize}
-              />
-            ),
+            // Hidden from the tab bar (not part of the research study - see
+            // conversation with the researcher) but the route/file stays
+            // intact and reachable, easily restorable by removing href: null.
+            href: null,
           }}
         />
       </Tabs>
@@ -264,17 +252,6 @@ export default function TabLayout() {
             <UserDropdownMenu onRequestClose={closeUserMenu} />
           </Pressable>
         </Pressable>
-      </Modal>
-
-      <Modal
-        transparent
-        animationType="fade"
-        visible={!hasSeenStudyPrompt}
-        onRequestClose={() => dispatch(markStudyPromptSeen())}
-      >
-        <View style={styles.studyPromptBackdrop}>
-          <StudyPromptModal onRequestClose={() => {}} />
-        </View>
       </Modal>
     </>
   );
@@ -379,13 +356,6 @@ const createStyles = (colors: ThemeColors) =>
     },
     menuBackdrop: {
       flex: 1,
-    },
-    studyPromptBackdrop: {
-      flex: 1,
-      alignItems: "center",
-      justifyContent: "center",
-      paddingHorizontal: 24,
-      backgroundColor: "rgba(0, 0, 0, 0.5)",
     },
     menuContainer: {
       position: "absolute",

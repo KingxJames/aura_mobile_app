@@ -19,6 +19,7 @@ import {
   useGoogleSignInMutation,
   useLoginMutation,
 } from "../store/services/authAPI";
+import { useGetStudyStatusQuery } from "../store/services/studyAPI";
 import { API_HOST } from "../store/services/config/api";
 import type { RootState } from "../store/store";
 import { useThemeColors } from "@/hooks/useThemeColors";
@@ -60,6 +61,10 @@ export default function Login() {
   const isAuthenticated = useSelector(
     (state: RootState) => state.auth.isAuthenticated,
   );
+  // Tracked server-side per account (not a device-local flag), so switching
+  // devices or a second account on the same device behaves correctly.
+  const { data: studyStatus, isFetching: isCheckingStudyStatus } =
+    useGetStudyStatusQuery(undefined, { skip: !isAuthenticated });
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [uiError, setUiError] = useState<string | null>(null);
@@ -74,11 +79,16 @@ export default function Login() {
     [googleError, loginError, uiError],
   );
 
+  // Handles the post-login redirect uniformly for email/password AND Google
+  // sign-in (neither submit handler navigates directly - both just wait for
+  // isAuthenticated to flip true) - avoids a race against the status query,
+  // which only starts fetching once isAuthenticated actually becomes true.
   useEffect(() => {
-    if (isAuthenticated) {
-      router.replace("/(tabs)/grades");
-    }
-  }, [isAuthenticated, router]);
+    if (!isAuthenticated || isCheckingStudyStatus) return;
+    router.replace(
+      studyStatus?.prompt_seen ? "/(tabs)/grades" : "/study-consent",
+    );
+  }, [isAuthenticated, studyStatus, isCheckingStudyStatus, router]);
 
   const handleSignIn = async () => {
     if (!email.trim() || !password.trim() || isSubmitting) {
@@ -96,8 +106,8 @@ export default function Login() {
       if (response.success === false) {
         return;
       }
-
-      router.replace("/(tabs)/grades");
+      // Redirect is handled by the isAuthenticated effect above, once the
+      // study-status check resolves.
     } catch {
       // handled by loginError render state
     }

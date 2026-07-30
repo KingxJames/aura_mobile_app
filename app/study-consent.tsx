@@ -1,6 +1,7 @@
 import {
   useEnrollInStudyMutation,
   useGetStudyStatusQuery,
+  useMarkStudyPromptSeenMutation,
 } from "@/store/services/studyAPI";
 import { useThemeColors } from "@/hooks/useThemeColors";
 import type { ThemeColors } from "@/constants/Colors";
@@ -28,8 +29,18 @@ export default function StudyConsentScreen() {
     "idle" | "enrolled" | "already_enrolled" | "error"
   >("idle");
   const [enrollInStudy, { isLoading }] = useEnrollInStudyMutation();
+  const [markPromptSeen] = useMarkStudyPromptSeenMutation();
   const { data: statusData, isLoading: isCheckingStatus } =
     useGetStudyStatusQuery();
+
+  // Once they've actually seen this page (regardless of what they decide),
+  // stop redirecting new logins here - a decision either way satisfies
+  // "we gave them the opportunity to join." Tracked server-side (per
+  // account), not as a device-local flag.
+  useEffect(() => {
+    markPromptSeen();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Skip straight to the confirmation view if the status check finds the
   // user is already enrolled - don't make them re-run the consent form
@@ -44,7 +55,7 @@ export default function StudyConsentScreen() {
     if (router.canGoBack()) {
       router.back();
     } else {
-      router.replace("/settings");
+      router.replace("/(tabs)/grades");
     }
   };
 

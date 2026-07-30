@@ -26,9 +26,6 @@ type AppUiState = {
   globalLoading: boolean;
   activeModal: string | null;
   toasts: Toast[];
-  // Whether the one-time "join the research study" popup has been shown/
-  // dismissed on this device, so it doesn't reappear on every login.
-  hasSeenStudyPrompt: boolean;
 };
 
 const initialState: AppUiState = {
@@ -39,7 +36,6 @@ const initialState: AppUiState = {
   globalLoading: false,
   activeModal: null,
   toasts: [],
-  hasSeenStudyPrompt: false,
 };
 
 const appUiSlice = createSlice({
@@ -76,10 +72,6 @@ const appUiSlice = createSlice({
       state.activeModal = null;
     },
 
-    markStudyPromptSeen: (state) => {
-      state.hasSeenStudyPrompt = true;
-    },
-
     pushToast: (state, action: PayloadAction<Toast>) => {
       state.toasts.push(action.payload);
     },
@@ -101,7 +93,6 @@ export const {
   setGlobalLoading,
   openModal,
   closeModal,
-  markStudyPromptSeen,
   pushToast,
   removeToast,
   clearToasts,

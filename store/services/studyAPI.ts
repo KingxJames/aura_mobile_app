@@ -9,7 +9,7 @@ type EnrollBody = {
   consent: true;
 };
 
-type StatusResponse = ApiEnvelope<{ enrolled: boolean }>;
+type StatusResponse = ApiEnvelope<{ enrolled: boolean; prompt_seen: boolean }>;
 
 // Deliberately does not return which experiment arm the user was assigned to -
 // the study requires participants stay blinded to their condition.
@@ -31,8 +31,22 @@ export const studyApi = baseAPI.injectEndpoints({
       }),
       invalidatesTags: ["Study"],
     }),
+
+    // Tracked per-account server-side (not a device-local flag) - marks that
+    // the consent screen was shown, independent of whether the user joined.
+    markStudyPromptSeen: build.mutation<ApiEnvelope<{}>, void>({
+      query: () => ({
+        url: "/v1/study/mark-prompt-seen",
+        method: "POST",
+      }),
+      invalidatesTags: ["Study"],
+    }),
   }),
   overrideExisting: false,
 });
 
-export const { useGetStudyStatusQuery, useEnrollInStudyMutation } = studyApi;
+export const {
+  useGetStudyStatusQuery,
+  useEnrollInStudyMutation,
+  useMarkStudyPromptSeenMutation,
+} = studyApi;

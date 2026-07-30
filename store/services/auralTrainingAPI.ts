@@ -171,6 +171,9 @@ export type AuralAttemptResult = {
   message?: string;
   // Only present when the attempt was for pulse_metre.
   session_progress?: PulseMetreSessionProgress;
+  // Only present for transcription - the AuralModuleAttempt row's id, needed
+  // to attach post-attempt feedback via POST /v1/feedback.
+  attempt_id?: number;
 };
 
 type SubmitAttemptArgs = {
