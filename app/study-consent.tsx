@@ -6,7 +6,7 @@ import {
 import { useThemeColors } from "@/hooks/useThemeColors";
 import type { ThemeColors } from "@/constants/Colors";
 import { useRouter } from "expo-router";
-import { ArrowLeft, Check, Users } from "lucide-react-native";
+import { ArrowLeft, Check, EyeOff, Shuffle, Users } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -103,18 +103,42 @@ export default function StudyConsentScreen() {
           </View>
 
           <Text style={styles.bodyText}>
-            Aura is running a research study evaluating whether AI-generated
-            feedback improves pitch accuracy for beginner music students,
-            compared to the app&apos;s standard feedback.
+            Aura is running a research study (a randomized controlled trial,
+            lasting approximately 4-6 weeks) evaluating whether AI-generated,
+            adaptive feedback improves pitch accuracy and transcription skill
+            for beginner music students, compared to the app&apos;s standard,
+            fixed feedback.
           </Text>
+        </View>
+
+        <View style={styles.card}>
+          <View style={styles.cardTitleRow}>
+            <Shuffle size={16} color={colors.textPrimary} />
+            <Text style={styles.cardTitle}>Random assignment &amp; blinding</Text>
+          </View>
 
           <Text style={styles.bodyText}>
-            If you join, you&apos;ll keep using the Aural Training tab as
-            normal. You&apos;ll be randomly assigned to one of two versions of
-            the practice experience. To keep the study valid, you won&apos;t
-            be told which version you&apos;re using.
+            If you choose to participate, you will be randomly assigned to
+            one of two feedback and learning pathways within the app:
+          </Text>
+          <Text style={styles.bodyText}>
+            • One pathway provides fixed, pre-written feedback and a
+            consistent exercise sequence.{"\n"}• The other pathway provides
+            AI-generated, personalized feedback and an adaptive exercise
+            sequence that responds to your performance.
+          </Text>
+          <Text style={styles.bodyText}>
+            You will not be told which pathway you have been assigned to, and
+            you will remain blind to your condition for the entire study.
+            This is standard research practice - it keeps the results from
+            being influenced by expectation, and it does not affect your
+            ability to use Aura normally.
           </Text>
 
+          <View style={styles.cardTitleRow}>
+            <EyeOff size={16} color={colors.textPrimary} />
+            <Text style={styles.cardTitle}>What we collect</Text>
+          </View>
           <Text style={styles.bodyText}>
             We&apos;ll record your practice attempts (audio, pitch accuracy,
             and timing) and any optional feedback you choose to leave, for
@@ -124,7 +148,7 @@ export default function StudyConsentScreen() {
           <Text style={styles.bodyText}>
             Participation is completely voluntary. Declining doesn&apos;t
             affect your normal use of Aura, and you can stop participating at
-            any time.
+            any time, for any reason, without penalty.
           </Text>
 
           <Text style={styles.disclaimerText}>
