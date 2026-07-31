@@ -21,53 +21,55 @@ export default function AuralScreen() {
       contentContainerStyle={styles.contentContainer}
       showsVerticalScrollIndicator={false}
     >
-      <View style={styles.headerRow}>
-        <Text style={styles.eyebrow}>AURAL TRAINING</Text>
-        <Text style={styles.heading}>Ear Training</Text>
-        <Text style={styles.subheading}>
-          Sharpen your pitch by ear, one note at a time.
-        </Text>
+      <View style={styles.contentColumn}>
+        <View style={styles.headerRow}>
+          <Text style={styles.eyebrow}>AURAL TRAINING</Text>
+          <Text style={styles.heading}>Ear Training</Text>
+          <Text style={styles.subheading}>
+            Sharpen your pitch by ear, one note at a time.
+          </Text>
+        </View>
+
+        <Pressable
+          onPress={() => router.push("/aural-practice")}
+          style={({ pressed }) => [
+            styles.practiceCard,
+            pressed && styles.practiceCardPressed,
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel="Free Practice: pitch matching"
+        >
+          <View style={styles.practiceIconCircle}>
+            <Mic size={22} color={colors.onInk} />
+          </View>
+          <View style={styles.practiceTextColumn}>
+            <Text style={styles.practiceTitle}>Free Practice</Text>
+            <Text style={styles.practiceSubtitle}>
+              Pick a note, listen to it, then sing it back for instant feedback
+            </Text>
+          </View>
+        </Pressable>
+
+        <Pressable
+          onPress={() => router.push("/aural-transcription")}
+          style={({ pressed }) => [
+            styles.transcriptionCard,
+            pressed && styles.practiceCardPressed,
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel="Transcription: notate a heard pattern"
+        >
+          <View style={styles.transcriptionIconCircle}>
+            <PenLine size={22} color={colors.ink} />
+          </View>
+          <View style={styles.practiceTextColumn}>
+            <Text style={styles.transcriptionTitle}>Transcription</Text>
+            <Text style={styles.transcriptionSubtitle}>
+              Listen to a short pattern, then write down what you heard
+            </Text>
+          </View>
+        </Pressable>
       </View>
-
-      <Pressable
-        onPress={() => router.push("/aural-practice")}
-        style={({ pressed }) => [
-          styles.practiceCard,
-          pressed && styles.practiceCardPressed,
-        ]}
-        accessibilityRole="button"
-        accessibilityLabel="Free Practice: pitch matching"
-      >
-        <View style={styles.practiceIconCircle}>
-          <Mic size={22} color={colors.onInk} />
-        </View>
-        <View style={styles.practiceTextColumn}>
-          <Text style={styles.practiceTitle}>Free Practice</Text>
-          <Text style={styles.practiceSubtitle}>
-            Pick a note, listen to it, then sing it back for instant feedback
-          </Text>
-        </View>
-      </Pressable>
-
-      <Pressable
-        onPress={() => router.push("/aural-transcription")}
-        style={({ pressed }) => [
-          styles.transcriptionCard,
-          pressed && styles.practiceCardPressed,
-        ]}
-        accessibilityRole="button"
-        accessibilityLabel="Transcription: notate a heard pattern"
-      >
-        <View style={styles.transcriptionIconCircle}>
-          <PenLine size={22} color={colors.ink} />
-        </View>
-        <View style={styles.practiceTextColumn}>
-          <Text style={styles.transcriptionTitle}>Transcription</Text>
-          <Text style={styles.transcriptionSubtitle}>
-            Listen to a short pattern, then write down what you heard
-          </Text>
-        </View>
-      </Pressable>
     </ScrollView>
   );
 }
@@ -82,6 +84,11 @@ const createStyles = (colors: ThemeColors) =>
       paddingHorizontal: 16,
       paddingTop: 96,
       paddingBottom: 92,
+      alignItems: "center",
+    },
+    contentColumn: {
+      width: "100%",
+      maxWidth: 680,
     },
     headerRow: {
       marginBottom: 24,

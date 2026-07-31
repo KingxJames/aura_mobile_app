@@ -16,7 +16,7 @@ import {
 } from "react-native";
 import Markdown from "react-native-markdown-display";
 import Animated, { FadeInUp } from "react-native-reanimated";
-import { Play } from "lucide-react-native";
+import { Play, Send } from "lucide-react-native";
 import NoteGlyph, {
     ARTICULATION_LABELS,
     DEFAULT_PITCH,
@@ -412,7 +412,7 @@ export default function TutorScreen() {
             flex: 1,
             paddingTop: 100,
             paddingHorizontal: 24,
-            paddingBottom: 84,
+            paddingBottom: 20,
             alignItems: "center",
           }}
         >
@@ -448,6 +448,9 @@ export default function TutorScreen() {
                 }
                 showsVerticalScrollIndicator={false}
                 onContentSizeChange={() =>
+                  flatListRef.current?.scrollToEnd({ animated: true })
+                }
+                onLayout={() =>
                   flatListRef.current?.scrollToEnd({ animated: true })
                 }
                 renderItem={({ item }) => {
@@ -966,6 +969,7 @@ export default function TutorScreen() {
                     color: colors.textPrimary,
                     padding: 0,
                     outlineWidth: 0,
+                    outlineStyle: "none" as any,
                   }}
                 />
               </View>
@@ -984,7 +988,7 @@ export default function TutorScreen() {
                   justifyContent: "center",
                 }}
               >
-                <Text style={{ color: colors.bg, fontSize: 18 }}>➔</Text>
+                <Send size={18} color={colors.bg} />
               </TouchableOpacity>
             </View>
           </View>

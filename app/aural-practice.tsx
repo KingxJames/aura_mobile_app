@@ -10,6 +10,7 @@ import {
 } from "@/store/features/auralSessionSlice";
 import { useAnalyzeAuralAudioMutation } from "@/store/services/auraAPI";
 import { useSubmitFeedbackMutation } from "@/store/services/feedbackAPI";
+import FlowCheckinCard from "@/components/flowCheckin/flowCheckinCard";
 import type { RootState } from "@/store/store";
 import { useThemeColors } from "@/hooks/useThemeColors";
 import type { ThemeColors } from "@/constants/Colors";
@@ -521,6 +522,7 @@ export default function AuralPracticeScreen() {
             </View>
           </>
         ) : (
+          <>
           <Animated.View
             entering={FadeInDown.duration(450).springify().damping(14)}
             style={styles.card}
@@ -631,6 +633,9 @@ export default function AuralPracticeScreen() {
               <Text style={styles.saveButtonText}>Try again</Text>
             </Pressable>
           </Animated.View>
+
+          <FlowCheckinCard />
+          </>
         )}
       </ScrollView>
     </View>

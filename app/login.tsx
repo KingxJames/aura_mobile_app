@@ -85,9 +85,14 @@ export default function Login() {
   // which only starts fetching once isAuthenticated actually becomes true.
   useEffect(() => {
     if (!isAuthenticated || isCheckingStudyStatus) return;
-    router.replace(
-      studyStatus?.prompt_seen ? "/(tabs)/grades" : "/study-consent",
-    );
+
+    if (!studyStatus?.prompt_seen) {
+      router.replace("/study-consent");
+    } else if (studyStatus.baseline_required) {
+      router.replace("/study-baseline");
+    } else {
+      router.replace("/(tabs)/grades");
+    }
   }, [isAuthenticated, studyStatus, isCheckingStudyStatus, router]);
 
   const handleSignIn = async () => {

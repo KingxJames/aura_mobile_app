@@ -55,6 +55,8 @@ export const baseAPI = createApi({
     "TutorHistory",
     "Transcription",
     "Study",
+    "StudyBaseline",
+    "FlowCheckin",
   ],
   endpoints: (_) => ({}),
 });

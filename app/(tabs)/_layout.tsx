@@ -10,11 +10,14 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useSelector } from "react-redux";
+import { useColorScheme } from "react-native";
+import { useDispatch, useSelector } from "react-redux";
+import { Moon, Sun } from "lucide-react-native";
 import PlatformIcon from "../../components/platformIcon/platformIcon";
 import UserDropdownMenu from "../../components/userDropdownMenu/userDropdownMenu";
 import { API_HOST } from "../../store/services/config/api";
-import type { RootState } from "../../store/store";
+import { setTheme } from "../../store/features/appUiSlice";
+import type { AppDispatch, RootState } from "../../store/store";
 import { useThemeColors } from "@/hooks/useThemeColors";
 import type { ThemeColors } from "@/constants/Colors";
 
@@ -27,7 +30,12 @@ export default function TabLayout() {
   const { width } = useWindowDimensions();
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const dispatch = useDispatch<AppDispatch>();
   const user = useSelector((state: RootState) => state.auth.user);
+  const themeMode = useSelector((state: RootState) => state.appUi.theme);
+  const systemScheme = useColorScheme();
+  const resolvedScheme = themeMode === "system" ? systemScheme : themeMode;
+  const isDarkMode = resolvedScheme === "dark";
   const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
@@ -85,12 +93,16 @@ export default function TabLayout() {
     setIsUserMenuOpen((prev) => !prev);
   };
 
+  const handleToggleTheme = () => {
+    dispatch(setTheme(isDarkMode ? "light" : "dark"));
+  };
+
   const closeUserMenu = () => {
     setIsUserMenuOpen(false);
   };
 
   return (
-    <>
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <Tabs
         screenOptions={{
           tabBarActiveTintColor: colors.gold,
@@ -115,11 +127,20 @@ export default function TabLayout() {
           tabBarStyle: [
             styles.tabBar,
             isTablet && styles.tabBarTablet,
-            { paddingBottom: tabBarBottomPadding },
+            {
+              paddingBottom: tabBarBottomPadding,
+              marginHorizontal: contentSideInset,
+            },
           ],
           sceneStyle: styles.scene,
           headerStyle: [styles.header, { height: headerHeight }],
-          headerTitle: "",
+          headerTitleAlign: "center",
+          headerTitle: () =>
+            isNarrowPhone ? null : (
+              <Text style={styles.headerSubtitle} numberOfLines={1}>
+                AURAL TUTOR · OP. 1
+              </Text>
+            ),
           // Branded left-aligned title to match the classical header style.
           headerLeft: () => (
             <Text
@@ -139,6 +160,28 @@ export default function TabLayout() {
             <View
               style={[styles.headerActions, { marginRight: contentSideInset }]}
             >
+              <Pressable
+                onPress={handleToggleTheme}
+                style={({ pressed }) => [
+                  styles.iconCircleButton,
+                  {
+                    width: actionButtonSize,
+                    height: actionButtonSize,
+                    borderRadius: actionButtonSize / 2,
+                  },
+                  pressed && styles.iconCirclePressed,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  isDarkMode ? "Switch to light mode" : "Switch to dark mode"
+                }
+              >
+                {isDarkMode ? (
+                  <Sun size={actionIconSize} color={colors.textPrimary} />
+                ) : (
+                  <Moon size={actionIconSize} color={colors.textPrimary} />
+                )}
+              </Pressable>
               <Pressable
                 onPress={handleToggleUserMenu}
                 style={({ pressed }) => [
@@ -223,9 +266,12 @@ export default function TabLayout() {
         <Tabs.Screen
           name="transcriber"
           options={{
-            // Hidden from the tab bar (not part of the research study - see
-            // conversation with the researcher) but the route/file stays
-            // intact and reachable, easily restorable by removing href: null.
+            // Hidden from the tab bar - not part of the live participant
+            // study. Technical Sub-Question 1 (OMR latency) is answered via
+            // a separate offline benchmark instead, so this stays out of
+            // participant scope/consent. Route/file stays intact and
+            // reachable, easily restorable by removing href: null - the
+            // backend's OMR processing_ms telemetry is untouched either way.
             href: null,
           }}
         />
@@ -253,7 +299,7 @@ export default function TabLayout() {
           </Pressable>
         </Pressable>
       </Modal>
-    </>
+    </View>
   );
 }
 
@@ -319,6 +365,12 @@ const createStyles = (colors: ThemeColors) =>
       flexDirection: "row",
       alignItems: "center",
       gap: 10,
+    },
+    headerSubtitle: {
+      fontSize: 10,
+      letterSpacing: 2,
+      color: colors.textSecondary,
+      fontWeight: "600",
     },
     iconCircleButton: {
       width: 40,

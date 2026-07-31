@@ -9,6 +9,8 @@ import {
 } from "@/store/services/auralTrainingAPI";
 import { useGetCurriculumQuery } from "@/store/services/curriculumAPI";
 import { useSubmitFeedbackMutation } from "@/store/services/feedbackAPI";
+import FlowCheckinCard from "@/components/flowCheckin/flowCheckinCard";
+import { SEQUENCE_TONE_ASSETS } from "@/constants/sequenceTones";
 import { useThemeColors } from "@/hooks/useThemeColors";
 import type { ThemeColors } from "@/constants/Colors";
 import { Audio } from "expo-av";
@@ -42,48 +44,6 @@ const PITCH_CLASSES = [
 // octave only), so every submitted note just uses a fixed placeholder
 // duration. The backend's validation still requires the field to be present.
 const SUBMITTED_NOTE_DURATION_BEATS = 1.0;
-
-// Metro requires static require() paths - generated via scripts/generate-tones.js.
-// Covers octaves 3-5 since the backend's stepwise-melody generator can land
-// anywhere in that range depending on key + scale degree.
-const SEQUENCE_TONE_ASSETS: Record<string, number> = {
-  C3: require("../assets/tones/sequence/C3.wav"),
-  "C#3": require("../assets/tones/sequence/Cs3.wav"),
-  D3: require("../assets/tones/sequence/D3.wav"),
-  "D#3": require("../assets/tones/sequence/Ds3.wav"),
-  E3: require("../assets/tones/sequence/E3.wav"),
-  F3: require("../assets/tones/sequence/F3.wav"),
-  "F#3": require("../assets/tones/sequence/Fs3.wav"),
-  G3: require("../assets/tones/sequence/G3.wav"),
-  "G#3": require("../assets/tones/sequence/Gs3.wav"),
-  A3: require("../assets/tones/sequence/A3.wav"),
-  "A#3": require("../assets/tones/sequence/As3.wav"),
-  B3: require("../assets/tones/sequence/B3.wav"),
-  C4: require("../assets/tones/sequence/C4.wav"),
-  "C#4": require("../assets/tones/sequence/Cs4.wav"),
-  D4: require("../assets/tones/sequence/D4.wav"),
-  "D#4": require("../assets/tones/sequence/Ds4.wav"),
-  E4: require("../assets/tones/sequence/E4.wav"),
-  F4: require("../assets/tones/sequence/F4.wav"),
-  "F#4": require("../assets/tones/sequence/Fs4.wav"),
-  G4: require("../assets/tones/sequence/G4.wav"),
-  "G#4": require("../assets/tones/sequence/Gs4.wav"),
-  A4: require("../assets/tones/sequence/A4.wav"),
-  "A#4": require("../assets/tones/sequence/As4.wav"),
-  B4: require("../assets/tones/sequence/B4.wav"),
-  C5: require("../assets/tones/sequence/C5.wav"),
-  "C#5": require("../assets/tones/sequence/Cs5.wav"),
-  D5: require("../assets/tones/sequence/D5.wav"),
-  "D#5": require("../assets/tones/sequence/Ds5.wav"),
-  E5: require("../assets/tones/sequence/E5.wav"),
-  F5: require("../assets/tones/sequence/F5.wav"),
-  "F#5": require("../assets/tones/sequence/Fs5.wav"),
-  G5: require("../assets/tones/sequence/G5.wav"),
-  "G#5": require("../assets/tones/sequence/Gs5.wav"),
-  A5: require("../assets/tones/sequence/A5.wav"),
-  "A#5": require("../assets/tones/sequence/As5.wav"),
-  B5: require("../assets/tones/sequence/B5.wav"),
-};
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -545,6 +505,7 @@ export default function AuralTranscriptionScreen() {
             </View>
           </>
         ) : (
+          <>
           <View style={styles.card}>
             <Text style={styles.resultEmoji}>
               {result.isCorrect ? "🎯" : "🎵"}
@@ -642,6 +603,9 @@ export default function AuralTranscriptionScreen() {
               <Text style={styles.saveButtonText}>Try another</Text>
             </Pressable>
           </View>
+
+          <FlowCheckinCard />
+          </>
         )}
       </ScrollView>
     </View>

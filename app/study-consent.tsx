@@ -74,6 +74,19 @@ export default function StudyConsentScreen() {
 
   const isDone = status === "enrolled" || status === "already_enrolled";
 
+  // Once enrollment is confirmed (either just now, or already on file), move
+  // on automatically: to the one-time baseline (pretest) assessment if it
+  // hasn't been done yet, otherwise straight into the app. Waits for
+  // statusData.enrolled to actually reflect the enrollment (the post-enroll
+  // refetch) rather than firing on the local "enrolled" status alone, so it
+  // doesn't race ahead on stale pre-enroll baseline_required data.
+  useEffect(() => {
+    if (!isDone || !statusData?.enrolled) return;
+    router.replace(
+      statusData.baseline_required ? "/study-baseline" : "/(tabs)/grades",
+    );
+  }, [isDone, statusData, router]);
+
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
       <ScrollView
@@ -104,7 +117,7 @@ export default function StudyConsentScreen() {
 
           <Text style={styles.bodyText}>
             Aura is running a research study (a randomized controlled trial,
-            lasting approximately 4-6 weeks) evaluating whether AI-generated,
+            lasting approximately 2-3 weeks) evaluating whether AI-generated,
             adaptive feedback improves pitch accuracy and transcription skill
             for beginner music students, compared to the app&apos;s standard,
             fixed feedback.
