@@ -1,4 +1,5 @@
 import {
+  useDeclineStudyMutation,
   useEnrollInStudyMutation,
   useGetStudyStatusQuery,
   useMarkStudyPromptSeenMutation,
@@ -26,30 +27,43 @@ export default function StudyConsentScreen() {
 
   const [hasAgreed, setHasAgreed] = useState(false);
   const [status, setStatus] = useState<
-    "idle" | "enrolled" | "already_enrolled" | "error"
+    | "idle"
+    | "enrolled"
+    | "already_enrolled"
+    | "declined"
+    | "already_declined"
+    | "error"
   >("idle");
   const [enrollInStudy, { isLoading }] = useEnrollInStudyMutation();
+  const [declineStudy, { isLoading: isDeclining }] = useDeclineStudyMutation();
   const [markPromptSeen] = useMarkStudyPromptSeenMutation();
   const { data: statusData, isLoading: isCheckingStatus } =
     useGetStudyStatusQuery();
 
-  // Once they've actually seen this page (regardless of what they decide),
-  // stop redirecting new logins here - a decision either way satisfies
-  // "we gave them the opportunity to join." Tracked server-side (per
-  // account), not as a device-local flag.
+  // Purely informational now (analytics: "was this ever shown") - no longer
+  // what gates re-showing this screen. That's enrolled/declined, an actual
+  // recorded decision, not just having viewed the page once.
   useEffect(() => {
     markPromptSeen();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Skip straight to the confirmation view if the status check finds the
-  // user is already enrolled - don't make them re-run the consent form
-  // just to hit a 409 on submit.
+  // user already made a decision (either way) - don't make them re-run the
+  // consent form just to hit a 409 on submit.
   useEffect(() => {
     if (statusData?.enrolled) {
       setStatus("already_enrolled");
+    } else if (statusData?.declined) {
+      setStatus("already_declined");
     }
-  }, [statusData?.enrolled]);
+  }, [statusData?.enrolled, statusData?.declined]);
+
+  // A decision (join or decline) has already been recorded server-side, as
+  // opposed to just having seen this page - only then is it safe to let the
+  // user navigate away, since StudyConsentGuard (app/_layout.tsx) will bounce
+  // an undecided account straight back here regardless.
+  const hasDecided = Boolean(statusData?.enrolled || statusData?.declined);
 
   const handleBack = () => {
     if (router.canGoBack()) {
@@ -72,20 +86,43 @@ export default function StudyConsentScreen() {
     }
   };
 
-  const isDone = status === "enrolled" || status === "already_enrolled";
+  const handleDecline = async () => {
+    try {
+      await declineStudy().unwrap();
+      setStatus("declined");
+    } catch (error: any) {
+      if (error?.status === 409) {
+        setStatus("already_enrolled");
+      } else {
+        setStatus("error");
+      }
+    }
+  };
 
-  // Once enrollment is confirmed (either just now, or already on file), move
-  // on automatically: to the one-time baseline (pretest) assessment if it
-  // hasn't been done yet, otherwise straight into the app. Waits for
-  // statusData.enrolled to actually reflect the enrollment (the post-enroll
-  // refetch) rather than firing on the local "enrolled" status alone, so it
-  // doesn't race ahead on stale pre-enroll baseline_required data.
+  const isDone =
+    status === "enrolled" ||
+    status === "already_enrolled" ||
+    status === "declined" ||
+    status === "already_declined";
+  const isEnrolledOutcome =
+    status === "enrolled" || status === "already_enrolled";
+
+  // Once a decision is confirmed (either just now, or already on file), move
+  // on automatically: enrolling goes to the one-time baseline (pretest) if
+  // it hasn't been done yet, declining (or having never enrolled) goes
+  // straight into the app. Waits for statusData to actually reflect the
+  // decision (the post-mutation refetch) rather than firing on the local
+  // status alone, so it doesn't race ahead on stale pre-decision data.
   useEffect(() => {
-    if (!isDone || !statusData?.enrolled) return;
-    router.replace(
-      statusData.baseline_required ? "/study-baseline" : "/(tabs)/grades",
-    );
-  }, [isDone, statusData, router]);
+    if (!isDone || !hasDecided) return;
+    if (statusData?.enrolled) {
+      router.replace(
+        statusData.baseline_required ? "/study-baseline" : "/(tabs)/grades",
+      );
+    } else if (statusData?.declined) {
+      router.replace("/(tabs)/grades");
+    }
+  }, [isDone, hasDecided, statusData, router]);
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
@@ -93,15 +130,17 @@ export default function StudyConsentScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <Pressable
-          onPress={handleBack}
-          style={styles.breadcrumb}
-          accessibilityRole="button"
-          accessibilityLabel="Back"
-        >
-          <ArrowLeft size={15} color={colors.textSecondary} />
-          <Text style={styles.breadcrumbText}>Settings</Text>
-        </Pressable>
+        {hasDecided ? (
+          <Pressable
+            onPress={handleBack}
+            style={styles.breadcrumb}
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+          >
+            <ArrowLeft size={15} color={colors.textSecondary} />
+            <Text style={styles.breadcrumbText}>Settings</Text>
+          </Pressable>
+        ) : null}
 
         <Text style={styles.eyebrow}>RESEARCH STUDY</Text>
         <Text style={styles.heading}>Help Improve Aura</Text>
@@ -203,11 +242,12 @@ export default function StudyConsentScreen() {
 
             <Pressable
               onPress={handleJoin}
-              disabled={!hasAgreed || isLoading}
+              disabled={!hasAgreed || isLoading || isDeclining}
               style={({ pressed }) => [
                 styles.saveButton,
                 pressed && styles.saveButtonPressed,
-                (!hasAgreed || isLoading) && styles.saveButtonDisabled,
+                (!hasAgreed || isLoading || isDeclining) &&
+                  styles.saveButtonDisabled,
               ]}
             >
               {isLoading ? (
@@ -216,17 +256,40 @@ export default function StudyConsentScreen() {
                 <Text style={styles.saveButtonText}>Join the study</Text>
               )}
             </Pressable>
+
+            <Pressable
+              onPress={handleDecline}
+              disabled={isLoading || isDeclining}
+              style={({ pressed }) => [
+                styles.declineButton,
+                pressed && styles.declineButtonPressed,
+                (isLoading || isDeclining) && styles.saveButtonDisabled,
+              ]}
+            >
+              {isDeclining ? (
+                <ActivityIndicator color={colors.textPrimary} />
+              ) : (
+                <Text style={styles.declineButtonText}>
+                  No thanks, don&apos;t include me
+                </Text>
+              )}
+            </Pressable>
           </>
         ) : (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>
-              {status === "already_enrolled"
-                ? "You're already part of this study"
-                : "You're enrolled"}
+              {isEnrolledOutcome
+                ? status === "already_enrolled"
+                  ? "You're already part of this study"
+                  : "You're enrolled"
+                : status === "already_declined"
+                  ? "You've already made your choice"
+                  : "No problem"}
             </Text>
             <Text style={styles.bodyText}>
-              Thanks for helping improve Aura. Just keep using the app as you
-              normally would.
+              {isEnrolledOutcome
+                ? "Thanks for helping improve Aura. Just keep using the app as you normally would."
+                : "You're not part of the study. Everything else in Aura works exactly the same."}
             </Text>
           </View>
         )}
@@ -354,5 +417,22 @@ const createStyles = (colors: ThemeColors) =>
       color: colors.onInk,
       fontSize: 16,
       fontWeight: "700",
+    },
+    declineButton: {
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surfaceAlt,
+      paddingVertical: 15,
+      alignItems: "center",
+      marginTop: 12,
+    },
+    declineButtonPressed: {
+      opacity: 0.85,
+    },
+    declineButtonText: {
+      color: colors.textPrimary,
+      fontSize: 15,
+      fontWeight: "600",
     },
   });

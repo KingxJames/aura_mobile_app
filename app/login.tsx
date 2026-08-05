@@ -86,7 +86,7 @@ export default function Login() {
   useEffect(() => {
     if (!isAuthenticated || isCheckingStudyStatus) return;
 
-    if (!studyStatus?.prompt_seen) {
+    if (!studyStatus?.enrolled && !studyStatus?.declined) {
       router.replace("/study-consent");
     } else if (studyStatus.baseline_required) {
       router.replace("/study-baseline");

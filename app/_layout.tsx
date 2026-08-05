@@ -1,3 +1,4 @@
+import StudyConsentGuard from "@/components/StudyConsentGuard";
 import { ThemeProvider } from "@/components/ThemeProvider/ThemeProvider";
 import { Stack } from "expo-router";
 import { Provider } from "react-redux";
@@ -9,6 +10,7 @@ export default function RootLayout() {
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>
         <ThemeProvider>
+          <StudyConsentGuard />
           <Stack>
             <Stack.Screen name="login" options={{ headerShown: false }} />
             <Stack.Screen name="register" options={{ headerShown: false }} />

@@ -2,10 +2,8 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useSelector } from "react-redux";
 import { useGoogleSignInMutation } from "../../../store/services/authAPI";
 import { useGetStudyStatusQuery } from "../../../store/services/studyAPI";
-import type { RootState } from "../../../store/store";
 import { useThemeColors } from "@/hooks/useThemeColors";
 import type { ThemeColors } from "@/constants/Colors";
 
@@ -24,16 +22,21 @@ export default function GoogleAuthCallbackScreen() {
   const [googleSignIn] = useGoogleSignInMutation();
   const [state, setState] = useState<AuthState>("loading");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const isAuthenticated = useSelector(
-    (state: RootState) => state.auth.isAuthenticated,
-  );
+  // Deliberately NOT state.auth.isAuthenticated: the web OAuth round trip is
+  // a full page reload (Linking.openURL navigates away to Google and back),
+  // so redux-persist rehydrates isAuthenticated=true (plus the stale token/
+  // user) from whichever account was signed in *before* this flow started,
+  // for the brief window before this screen's own googleSignIn call below
+  // resolves. Gating on that flag fetches/redirects using the previous
+  // account's study status instead of the one actually being signed in.
+  const [signedInHere, setSignedInHere] = useState(false);
   // Tracked server-side per account (not a device-local flag), so switching
   // devices or a second account on the same device behaves correctly. Same
   // post-auth redirect logic as login.tsx/index.tsx - this screen is a
   // second entry point (the web OAuth redirect lands here directly, not on
   // login.tsx) that must not skip the consent/baseline gate.
   const { data: studyStatus, isFetching: isCheckingStudyStatus } =
-    useGetStudyStatusQuery(undefined, { skip: !isAuthenticated });
+    useGetStudyStatusQuery(undefined, { skip: !signedInHere });
 
   const token = useMemo(() => {
     const maybeGoogleToken = toSingleValue(params.google_token as string | string[] | undefined);
@@ -68,9 +71,11 @@ export default function GoogleAuthCallbackScreen() {
 
       try {
         await googleSignIn({ google_token: token }).unwrap();
-        // Redirect is handled by the isAuthenticated effect below, once the
-        // study-status check resolves - matches login.tsx's pattern so this
-        // entry point can't skip the consent/baseline gate.
+        if (!active) return;
+        // Redirect is handled by the effect below, once the study-status
+        // check resolves - matches login.tsx's pattern so this entry point
+        // can't skip the consent/baseline gate.
+        setSignedInHere(true);
       } catch (error) {
         if (!active) return;
         const message =
@@ -91,16 +96,16 @@ export default function GoogleAuthCallbackScreen() {
   }, [googleSignIn, oauthError, router, token]);
 
   useEffect(() => {
-    if (!isAuthenticated || isCheckingStudyStatus) return;
+    if (!signedInHere || isCheckingStudyStatus) return;
 
-    if (!studyStatus?.prompt_seen) {
+    if (!studyStatus?.enrolled && !studyStatus?.declined) {
       router.replace("/study-consent");
     } else if (studyStatus.baseline_required) {
       router.replace("/study-baseline");
     } else {
       router.replace("/(tabs)/grades");
     }
-  }, [isAuthenticated, studyStatus, isCheckingStudyStatus, router]);
+  }, [signedInHere, studyStatus, isCheckingStudyStatus, router]);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>

@@ -55,6 +55,12 @@ export const authApi = baseAPI.injectEndpoints({
             dispatch(
               setCredentials({ accessToken: data.token, user: data.user }),
             );
+            // Establishing a NEW identity - throw away any responses cached
+            // under whatever account (or none) was previously active in
+            // this session, so signing in as a different user can't serve
+            // stale data (e.g. study enrollment status) under the new
+            // user's name. Same reset logout() already does.
+            dispatch(baseAPI.util.resetApiState());
           }
         } catch {
           // request failed; no-op
@@ -76,6 +82,12 @@ export const authApi = baseAPI.injectEndpoints({
             dispatch(
               setCredentials({ accessToken: data.token, user: data.user }),
             );
+            // Establishing a NEW identity - throw away any responses cached
+            // under whatever account (or none) was previously active in
+            // this session, so signing in as a different user can't serve
+            // stale data (e.g. study enrollment status) under the new
+            // user's name. Same reset logout() already does.
+            dispatch(baseAPI.util.resetApiState());
           }
         } catch {
           // request failed; no-op
@@ -97,6 +109,12 @@ export const authApi = baseAPI.injectEndpoints({
             dispatch(
               setCredentials({ accessToken: data.token, user: data.user }),
             );
+            // Establishing a NEW identity - throw away any responses cached
+            // under whatever account (or none) was previously active in
+            // this session, so signing in as a different user can't serve
+            // stale data (e.g. study enrollment status) under the new
+            // user's name. Same reset logout() already does.
+            dispatch(baseAPI.util.resetApiState());
           }
         } catch {
           // request failed; no-op

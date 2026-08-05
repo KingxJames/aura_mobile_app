@@ -11,6 +11,10 @@ type EnrollBody = {
 
 type StatusResponse = ApiEnvelope<{
   enrolled: boolean;
+  // A real, recorded decision not to join - distinct from prompt_seen
+  // (which fires just from viewing the screen). "enrolled || declined"
+  // is what the consent gate treats as "made a choice."
+  declined: boolean;
   prompt_seen: boolean;
   // Enrolled but hasn't finished the pretest yet - normal Free Practice/
   // Transcription (and their arm-specific feedback/gating) stay off-limits
@@ -117,6 +121,17 @@ export const studyApi = baseAPI.injectEndpoints({
       invalidatesTags: ["Study"],
     }),
 
+    // A real, first-class decision not to join - the consent gate treats
+    // this the same as enrolling for the purpose of unblocking the rest of
+    // the app.
+    declineStudy: build.mutation<ApiEnvelope<{}>, void>({
+      query: () => ({
+        url: "/v1/study/decline",
+        method: "POST",
+      }),
+      invalidatesTags: ["Study"],
+    }),
+
     // Tracked per-account server-side (not a device-local flag) - marks that
     // the consent screen was shown, independent of whether the user joined.
     markStudyPromptSeen: build.mutation<ApiEnvelope<{}>, void>({
@@ -210,6 +225,7 @@ export const studyApi = baseAPI.injectEndpoints({
 export const {
   useGetStudyStatusQuery,
   useEnrollInStudyMutation,
+  useDeclineStudyMutation,
   useMarkStudyPromptSeenMutation,
   useGetBaselineStatusQuery,
   useSubmitBaselinePitchAttemptMutation,
