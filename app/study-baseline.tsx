@@ -166,6 +166,19 @@ export default function StudyBaselineScreen() {
     !status.transcription_done &&
     transcriptionResult === null;
 
+  // Resume case: both parts were already recorded server-side (e.g. a
+  // previous session submitted the transcription item but the app closed
+  // before /complete ran) but this fresh page load has no local
+  // transcriptionResult to show a score for. Nothing left to do but finalize
+  // - there's no re-doable step here, so this auto-advances rather than
+  // asking the user to click through a screen with nothing new to show them.
+  const readyToFinish =
+    !!status &&
+    !status.completed &&
+    status.pitch_trials_done >= status.pitch_trials_required &&
+    status.transcription_done &&
+    transcriptionResult === null;
+
   const handlePlayTone = async (key: string) => {
     try {
       if (recordingState === "recording") return;
@@ -377,6 +390,13 @@ export default function StudyBaselineScreen() {
     router.replace("/(tabs)/grades");
   };
 
+  useEffect(() => {
+    if (readyToFinish) {
+      handleFinishBaseline();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [readyToFinish]);
+
   const showLoadingCard = isLoadingStatus && !status;
 
   return (
@@ -392,7 +412,7 @@ export default function StudyBaselineScreen() {
           where you're starting from - this only happens once.
         </Text>
 
-        {showLoadingCard ? (
+        {showLoadingCard || readyToFinish ? (
           <View style={styles.card}>
             <ActivityIndicator color={colors.ink} />
           </View>
