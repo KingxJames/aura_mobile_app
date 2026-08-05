@@ -16,6 +16,11 @@ type AuralSessionState = {
   detectedFrequencyPreview: number | null;
   centsDeviationPreview: number | null;
   feedbackPreview: string | null;
+
+  // Wall-clock ms for the analyzeAuralAudio round trip (submit -> DSP result
+  // back) - the "immediate sonic cross-referencing" latency, for the
+  // evaluation's System Performance metric.
+  analysisLatencyMs: number | null;
 };
 
 const initialState: AuralSessionState = {
@@ -31,6 +36,7 @@ const initialState: AuralSessionState = {
   detectedFrequencyPreview: null,
   centsDeviationPreview: null,
   feedbackPreview: null,
+  analysisLatencyMs: null,
 };
 
 const auralSessionSlice = createSlice({
@@ -48,6 +54,7 @@ const auralSessionSlice = createSlice({
       state.detectedFrequencyPreview = null;
       state.centsDeviationPreview = null;
       state.feedbackPreview = null;
+      state.analysisLatencyMs = null;
     },
 
     stopRecording: (
@@ -79,11 +86,13 @@ const auralSessionSlice = createSlice({
         detectedFrequency: number | null;
         centsDeviation: number | null;
         feedbackText: string | null;
+        analysisLatencyMs?: number | null;
       }>,
     ) => {
       state.detectedFrequencyPreview = action.payload.detectedFrequency;
       state.centsDeviationPreview = action.payload.centsDeviation;
       state.feedbackPreview = action.payload.feedbackText;
+      state.analysisLatencyMs = action.payload.analysisLatencyMs ?? null;
     },
 
     resetAuralSession: () => initialState,

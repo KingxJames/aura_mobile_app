@@ -162,6 +162,9 @@ export default function AuralPracticeScreen() {
   const lastAttemptId = useSelector(
     (state: RootState) => state.auralSession.lastAttemptId,
   );
+  const analysisLatencyMs = useSelector(
+    (state: RootState) => state.auralSession.analysisLatencyMs,
+  );
 
   const [analyzeAuralAudio] = useAnalyzeAuralAudioMutation();
   const [submitFeedback, { isLoading: isSubmittingFeedback }] =
@@ -313,17 +316,24 @@ export default function AuralPracticeScreen() {
         "audio/m4a",
       );
 
+      // Times only the DSP round trip itself (request out to result back) -
+      // not mic setup or file resolution above, so this reflects the
+      // "immediate sonic cross-referencing" latency the feedback loop
+      // actually depends on.
+      const analysisStartedAt = Date.now();
       const result = await analyzeAuralAudio({
         audioFile,
         audioFileName: fileName,
         targetNote,
       }).unwrap();
+      const analysisLatencyMs = Date.now() - analysisStartedAt;
 
       dispatch(
         setResultPreview({
           detectedFrequency: result.detectedFrequency,
           centsDeviation: result.centsDeviation,
           feedbackText: result.feedbackText,
+          analysisLatencyMs,
         }),
       );
       dispatch(setLastAttemptId(result.id));
@@ -547,6 +557,12 @@ export default function AuralPracticeScreen() {
             </View>
 
             <Text style={styles.bodyText}>{feedbackPreview}</Text>
+
+            {analysisLatencyMs !== null ? (
+              <Text style={styles.latencyText}>
+                Feedback in {analysisLatencyMs}ms
+              </Text>
+            ) : null}
 
             {streak > 1 ? (
               <Text style={styles.streakLine}>
@@ -880,6 +896,13 @@ const createStyles = (colors: ThemeColors) =>
       fontSize: 15,
       lineHeight: 22,
       color: colors.textPrimary,
+      marginBottom: 16,
+    },
+    latencyText: {
+      fontSize: 11,
+      color: colors.textMuted,
+      textAlign: "center",
+      marginTop: -12,
       marginBottom: 16,
     },
     feedbackDivider: {
