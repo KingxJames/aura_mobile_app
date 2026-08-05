@@ -18,12 +18,17 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSelector } from "react-redux";
+import type { RootState } from "@/store/store";
 
 export default function StudyConsentScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const isAuthenticated = useSelector(
+    (state: RootState) => state.auth.isAuthenticated,
+  );
 
   const [hasAgreed, setHasAgreed] = useState(false);
   const [status, setStatus] = useState<
@@ -38,15 +43,26 @@ export default function StudyConsentScreen() {
   const [declineStudy, { isLoading: isDeclining }] = useDeclineStudyMutation();
   const [markPromptSeen] = useMarkStudyPromptSeenMutation();
   const { data: statusData, isLoading: isCheckingStatus } =
-    useGetStudyStatusQuery();
+    useGetStudyStatusQuery(undefined, { skip: !isAuthenticated });
+
+  // This screen is reachable via direct URL/deep link, not just through the
+  // login flow's own redirect - without this, an unauthenticated visitor
+  // triggers status/mark-prompt-seen/enroll calls with no token, which the
+  // backend correctly 401s (surfacing as "Something went wrong" on submit).
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.replace("/login");
+    }
+  }, [isAuthenticated, router]);
 
   // Purely informational now (analytics: "was this ever shown") - no longer
   // what gates re-showing this screen. That's enrolled/declined, an actual
   // recorded decision, not just having viewed the page once.
   useEffect(() => {
+    if (!isAuthenticated) return;
     markPromptSeen();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isAuthenticated]);
 
   // Skip straight to the confirmation view if the status check finds the
   // user already made a decision (either way) - don't make them re-run the
@@ -209,7 +225,7 @@ export default function StudyConsentScreen() {
           </Text>
         </View>
 
-        {isCheckingStatus ? (
+        {!isAuthenticated || isCheckingStatus ? (
           <View style={styles.card}>
             <ActivityIndicator color={colors.ink} />
           </View>
