@@ -2,7 +2,10 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useSelector } from "react-redux";
 import { useGoogleSignInMutation } from "../../../store/services/authAPI";
+import { useGetStudyStatusQuery } from "../../../store/services/studyAPI";
+import type { RootState } from "../../../store/store";
 import { useThemeColors } from "@/hooks/useThemeColors";
 import type { ThemeColors } from "@/constants/Colors";
 
@@ -21,6 +24,16 @@ export default function GoogleAuthCallbackScreen() {
   const [googleSignIn] = useGoogleSignInMutation();
   const [state, setState] = useState<AuthState>("loading");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const isAuthenticated = useSelector(
+    (state: RootState) => state.auth.isAuthenticated,
+  );
+  // Tracked server-side per account (not a device-local flag), so switching
+  // devices or a second account on the same device behaves correctly. Same
+  // post-auth redirect logic as login.tsx/index.tsx - this screen is a
+  // second entry point (the web OAuth redirect lands here directly, not on
+  // login.tsx) that must not skip the consent/baseline gate.
+  const { data: studyStatus, isFetching: isCheckingStudyStatus } =
+    useGetStudyStatusQuery(undefined, { skip: !isAuthenticated });
 
   const token = useMemo(() => {
     const maybeGoogleToken = toSingleValue(params.google_token as string | string[] | undefined);
@@ -55,8 +68,9 @@ export default function GoogleAuthCallbackScreen() {
 
       try {
         await googleSignIn({ google_token: token }).unwrap();
-        if (!active) return;
-        router.replace("/(tabs)/grades");
+        // Redirect is handled by the isAuthenticated effect below, once the
+        // study-status check resolves - matches login.tsx's pattern so this
+        // entry point can't skip the consent/baseline gate.
       } catch (error) {
         if (!active) return;
         const message =
@@ -75,6 +89,18 @@ export default function GoogleAuthCallbackScreen() {
       active = false;
     };
   }, [googleSignIn, oauthError, router, token]);
+
+  useEffect(() => {
+    if (!isAuthenticated || isCheckingStudyStatus) return;
+
+    if (!studyStatus?.prompt_seen) {
+      router.replace("/study-consent");
+    } else if (studyStatus.baseline_required) {
+      router.replace("/study-baseline");
+    } else {
+      router.replace("/(tabs)/grades");
+    }
+  }, [isAuthenticated, studyStatus, isCheckingStudyStatus, router]);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
