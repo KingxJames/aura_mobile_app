@@ -7,7 +7,10 @@ type ApiEnvelope<T> = {
 
 // Matches the aliases registered in the backend's morph map
 // (App\Providers\AppServiceProvider) - never the raw model class name.
-export type FeedbackableType = "aural_attempt" | "module_attempt";
+export type FeedbackableType =
+  | "aural_attempt"
+  | "module_attempt"
+  | "tutor_message";
 
 type SubmitFeedbackBody = {
   feedbackable_type: FeedbackableType;

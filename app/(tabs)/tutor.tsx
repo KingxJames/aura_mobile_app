@@ -27,6 +27,7 @@ import NoteGlyph, {
     REST_LABELS,
 } from "@/components/tutor/NoteGlyph";
 import NoteSequence, { type SequenceToken } from "@/components/tutor/NoteSequence";
+import TutorClarityRating from "@/components/tutor/TutorClarityRating";
 import IntervalGlyph, { intervalLabel } from "@/components/tutor/IntervalGlyph";
 import ChordGlyph, { chordLabel } from "@/components/tutor/ChordGlyph";
 import CadenceGlyph, { cadenceLabel } from "@/components/tutor/CadenceGlyph";
@@ -488,7 +489,8 @@ export default function TutorScreen() {
                           {extractStudentQuestion(item.content)}
                         </Text>
                       ) : (
-                        parseTutorContent(item.content).map((segment, index) => {
+                        <>
+                        {parseTutorContent(item.content).map((segment, index) => {
                           if (segment.type === "text") {
                             // Defends against a real failure mode: when the tutor puts
                             // a [[note:...]]/[[sequence:...]] tag inside a markdown list
@@ -918,7 +920,13 @@ export default function TutorScreen() {
                               )}
                             </View>
                           );
-                        })
+                        })}
+                        {item.message_type === "ai" &&
+                          item.id !== "pending-assistant" &&
+                          item.id !== "pending-typing" && (
+                            <TutorClarityRating messageId={item.id} />
+                          )}
+                        </>
                       )}
                     </Animated.View>
                   );
