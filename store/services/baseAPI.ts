@@ -56,6 +56,7 @@ export const baseAPI = createApi({
     "Transcription",
     "Study",
     "StudyBaseline",
+    "StudyAdmin",
     "FlowCheckin",
   ],
   endpoints: (_) => ({}),

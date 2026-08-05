@@ -21,6 +21,7 @@ import { useRouter } from "expo-router";
 import {
   ArrowLeft,
   Bell,
+  LineChart,
   Lock,
   Moon,
   LogOut,
@@ -121,6 +122,10 @@ export default function SettingsScreen() {
 
   const handleOpenStudyConsent = () => {
     router.push("/study-consent");
+  };
+
+  const handleOpenStudyAdmin = () => {
+    router.push("/study-admin");
   };
 
   const handleLogout = async () => {
@@ -414,6 +419,31 @@ export default function SettingsScreen() {
             </Pressable>
           </View>
         </View>
+
+        {user?.is_admin ? (
+          <View style={styles.card}>
+            <View style={styles.cardTitleRow}>
+              <LineChart size={16} color={colors.textPrimary} />
+              <Text style={styles.cardTitle}>Study Monitor</Text>
+            </View>
+
+            <Text style={styles.fieldLabel}>
+              Researcher-only view of enrollment and attrition.
+            </Text>
+
+            <View style={styles.buttonRow}>
+              <Pressable
+                onPress={handleOpenStudyAdmin}
+                style={({ pressed }) => [
+                  styles.outlineButton,
+                  pressed && styles.outlineButtonPressed,
+                ]}
+              >
+                <Text style={styles.outlineButtonText}>Open dashboard</Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : null}
 
         <View style={styles.dangerCard}>
           <Text style={styles.dangerTitle}>Danger zone</Text>

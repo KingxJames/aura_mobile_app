@@ -7,6 +7,7 @@ export type AuthUser = {
   current_grade_level?: string;
   profile_picture?: string;
   provider?: string;
+  is_admin?: boolean;
 };
 
 type AuthState = {

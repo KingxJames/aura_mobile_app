@@ -65,6 +65,37 @@ export type BaselineTranscriptionAttemptResult = ApiEnvelope<{
   };
 }>;
 
+// Researcher-only (backend-gated to is_admin accounts, see EnsureIsAdmin) -
+// per-arm enrollment counts against the recruitment target/floor.
+export type EnrollmentSummary = ApiEnvelope<{
+  data: {
+    control_count: number;
+    experimental_count: number;
+    total_enrolled: number;
+    target_min: number;
+    target_max: number;
+    floor_total: number;
+    floor_per_arm: number;
+    is_pilot_range: boolean;
+  };
+}>;
+
+// Researcher-only - per-participant completed-session counts, flagged when
+// below the study's session floor so at-risk participants can be followed
+// up with early rather than discovered at data-freeze time.
+export type AttritionReport = ApiEnvelope<{
+  session_floor: number;
+  data: {
+    user_id: number;
+    name: string;
+    email: string;
+    study_arm: "control" | "experimental";
+    enrolled_at: string | null;
+    sessions_completed: number;
+    at_risk: boolean;
+  }[];
+}>;
+
 // Deliberately does not return which experiment arm the user was assigned to -
 // the study requires participants stay blinded to their condition.
 export const studyApi = baseAPI.injectEndpoints({
@@ -156,6 +187,22 @@ export const studyApi = baseAPI.injectEndpoints({
       }),
       invalidatesTags: ["Study", "StudyBaseline"],
     }),
+
+    getEnrollmentSummary: build.query<EnrollmentSummary, void>({
+      query: () => ({
+        url: "/v1/study/admin/enrollment-summary",
+        method: "GET",
+      }),
+      providesTags: ["StudyAdmin"],
+    }),
+
+    getAttritionReport: build.query<AttritionReport, void>({
+      query: () => ({
+        url: "/v1/study/admin/attrition",
+        method: "GET",
+      }),
+      providesTags: ["StudyAdmin"],
+    }),
   }),
   overrideExisting: false,
 });
@@ -169,4 +216,6 @@ export const {
   useGetBaselineTranscriptionExerciseMutation,
   useSubmitBaselineTranscriptionAttemptMutation,
   useCompleteBaselineMutation,
+  useGetEnrollmentSummaryQuery,
+  useGetAttritionReportQuery,
 } = studyApi;

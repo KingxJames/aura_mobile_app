@@ -24,6 +24,10 @@ export default function RootLayout() {
               options={{ headerShown: false }}
             />
             <Stack.Screen
+              name="study-admin"
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
               name="aural-practice"
               options={{ headerShown: false }}
             />
