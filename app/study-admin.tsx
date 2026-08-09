@@ -1,4 +1,5 @@
 import {
+  useDeleteParticipantMutation,
   useGetAttritionReportQuery,
   useGetEnrollmentSummaryQuery,
   useGetParticipantProgressQuery,
@@ -12,13 +13,16 @@ import {
   ArrowLeft,
   Minus,
   ShieldCheck,
+  Trash2,
   TrendingDown,
   TrendingUp,
   Users,
 } from "lucide-react-native";
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -61,6 +65,40 @@ export default function StudyAdminScreen() {
     isLoading: isProgressLoading,
     error: progressError,
   } = useGetParticipantProgressQuery(undefined, { skip: !isAdmin });
+  const [deleteParticipant] = useDeleteParticipantMutation();
+  const [deletingUserId, setDeletingUserId] = useState<number | null>(null);
+
+  // Research-data cleanup for throwaway/test accounts, not a general
+  // "manage participants" feature - the backend already refuses admin/self
+  // targets, this just confirms before firing something irreversible.
+  const handleDeleteParticipant = (userId: number, name: string) => {
+    const message = `Delete ${name}? This permanently removes their account and everything they've recorded.`;
+
+    const proceed = () => {
+      setDeletingUserId(userId);
+      deleteParticipant(userId)
+        .unwrap()
+        .catch(() => {
+          const failureMessage = "Couldn't delete this participant. Please try again.";
+          if (Platform.OS === "web") {
+            window.alert(failureMessage);
+          } else {
+            Alert.alert("Delete failed", failureMessage);
+          }
+        })
+        .finally(() => setDeletingUserId(null));
+    };
+
+    if (Platform.OS === "web") {
+      if (window.confirm(message)) proceed();
+      return;
+    }
+
+    Alert.alert("Delete participant", message, [
+      { text: "Cancel", style: "cancel" },
+      { text: "Delete", style: "destructive", onPress: proceed },
+    ]);
+  };
 
   if (!isAdmin) {
     return (
@@ -195,6 +233,19 @@ export default function StudyAdminScreen() {
                         <Text style={styles.okPillText}>On track</Text>
                       </View>
                     )}
+                    <Pressable
+                      onPress={() => handleDeleteParticipant(row.user_id, row.name)}
+                      disabled={deletingUserId === row.user_id}
+                      style={styles.deleteButton}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Delete ${row.name}`}
+                    >
+                      {deletingUserId === row.user_id ? (
+                        <ActivityIndicator size="small" color={colors.danger} />
+                      ) : (
+                        <Trash2 size={14} color={colors.danger} />
+                      )}
+                    </Pressable>
                   </View>
                   <Text style={styles.participantEmail} numberOfLines={1}>
                     {row.email}
@@ -513,6 +564,9 @@ const createStyles = (colors: ThemeColors) =>
       justifyContent: "space-between",
       gap: 8,
       marginBottom: 2,
+    },
+    deleteButton: {
+      padding: 4,
     },
     participantName: {
       flex: 1,

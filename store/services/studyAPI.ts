@@ -252,6 +252,16 @@ export const studyApi = baseAPI.injectEndpoints({
       }),
       providesTags: ["StudyAdmin"],
     }),
+
+    // Research-data cleanup for throwaway/test participant accounts, not
+    // general user management - backend refuses admin/self targets.
+    deleteParticipant: build.mutation<ApiEnvelope<{}>, number>({
+      query: (userId) => ({
+        url: `/v1/study/admin/participants/${userId}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["StudyAdmin"],
+    }),
   }),
   overrideExisting: false,
 });
@@ -269,4 +279,5 @@ export const {
   useGetEnrollmentSummaryQuery,
   useGetAttritionReportQuery,
   useGetParticipantProgressQuery,
+  useDeleteParticipantMutation,
 } = studyApi;
