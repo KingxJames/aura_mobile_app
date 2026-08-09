@@ -1,3 +1,4 @@
+import AuthGuard from "@/components/AuthGuard";
 import StudyConsentGuard from "@/components/StudyConsentGuard";
 import { ThemeProvider } from "@/components/ThemeProvider/ThemeProvider";
 import { Stack } from "expo-router";
@@ -10,6 +11,7 @@ export default function RootLayout() {
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>
         <ThemeProvider>
+          <AuthGuard />
           <StudyConsentGuard />
           <Stack>
             <Stack.Screen name="login" options={{ headerShown: false }} />
