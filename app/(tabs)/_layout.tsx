@@ -22,7 +22,7 @@ import { useThemeColors } from "@/hooks/useThemeColors";
 import type { ThemeColors } from "@/constants/Colors";
 
 export const unstable_settings = {
-  initialRouteName: "grades",
+  initialRouteName: "aural",
 };
 
 export default function TabLayout() {

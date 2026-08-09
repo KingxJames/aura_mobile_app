@@ -133,10 +133,10 @@ export default function StudyConsentScreen() {
     if (!isDone || !hasDecided) return;
     if (statusData?.enrolled) {
       router.replace(
-        statusData.baseline_required ? "/study-baseline" : "/(tabs)/grades",
+        statusData.baseline_required ? "/study-baseline" : "/(tabs)/aural",
       );
     } else if (statusData?.declined) {
-      router.replace("/(tabs)/grades");
+      router.replace("/(tabs)/aural");
     }
   }, [isDone, hasDecided, statusData, router]);
 

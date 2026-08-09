@@ -103,7 +103,7 @@ export default function GoogleAuthCallbackScreen() {
     } else if (studyStatus.baseline_required) {
       router.replace("/study-baseline");
     } else {
-      router.replace("/(tabs)/grades");
+      router.replace("/(tabs)/aural");
     }
   }, [signedInHere, studyStatus, isCheckingStudyStatus, router]);
 

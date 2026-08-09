@@ -32,7 +32,7 @@ export default function RootIndex() {
     } else if (studyStatus.baseline_required) {
       router.replace("/study-baseline");
     } else {
-      router.replace("/(tabs)/grades");
+      router.replace("/(tabs)/aural");
     }
   }, [isAuthenticated, studyStatus, isCheckingStudyStatus, router]);
 

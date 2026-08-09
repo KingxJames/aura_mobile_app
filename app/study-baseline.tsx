@@ -149,7 +149,7 @@ export default function StudyBaselineScreen() {
   // Already finished (e.g. reloaded this screen after finishing) - nothing to do here.
   useEffect(() => {
     if (status?.completed) {
-      router.replace("/(tabs)/grades");
+      router.replace("/(tabs)/aural");
     }
   }, [status?.completed, router]);
 
@@ -387,7 +387,7 @@ export default function StudyBaselineScreen() {
       // by a previous attempt), the user has still finished everything they
       // need to client-side, so proceed to the app regardless.
     }
-    router.replace("/(tabs)/grades");
+    router.replace("/(tabs)/aural");
   };
 
   useEffect(() => {
