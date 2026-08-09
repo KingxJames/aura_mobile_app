@@ -100,6 +100,32 @@ export type AttritionReport = ApiEnvelope<{
   }[];
 }>;
 
+// Researcher-only - per-participant baseline (pretest) vs. current pitch and
+// transcription accuracy, so a researcher can see how each participant is
+// actually trending rather than just whether they're still showing up.
+export type ParticipantProgress = ApiEnvelope<{
+  rolling_window_n: number;
+  data: {
+    user_id: number;
+    name: string;
+    email: string;
+    study_arm: "control" | "experimental";
+    baseline_completed: boolean;
+    pitch: {
+      baseline_cents: number | null;
+      current_cents: number | null;
+      // Positive = current cents deviation is lower than baseline (more accurate).
+      improvement_pct: number | null;
+    };
+    transcription: {
+      baseline_pct: number | null;
+      current_pct: number | null;
+      // Percentage-point delta (current_pct - baseline_pct), not a relative %.
+      improvement_pts: number | null;
+    };
+  }[];
+}>;
+
 // Deliberately does not return which experiment arm the user was assigned to -
 // the study requires participants stay blinded to their condition.
 export const studyApi = baseAPI.injectEndpoints({
@@ -218,6 +244,14 @@ export const studyApi = baseAPI.injectEndpoints({
       }),
       providesTags: ["StudyAdmin"],
     }),
+
+    getParticipantProgress: build.query<ParticipantProgress, void>({
+      query: () => ({
+        url: "/v1/study/admin/progress",
+        method: "GET",
+      }),
+      providesTags: ["StudyAdmin"],
+    }),
   }),
   overrideExisting: false,
 });
@@ -234,4 +268,5 @@ export const {
   useCompleteBaselineMutation,
   useGetEnrollmentSummaryQuery,
   useGetAttritionReportQuery,
+  useGetParticipantProgressQuery,
 } = studyApi;

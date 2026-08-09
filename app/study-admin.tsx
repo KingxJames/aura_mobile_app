@@ -1,12 +1,21 @@
 import {
   useGetAttritionReportQuery,
   useGetEnrollmentSummaryQuery,
+  useGetParticipantProgressQuery,
 } from "@/store/services/studyAPI";
 import type { RootState } from "@/store/store";
 import { useThemeColors } from "@/hooks/useThemeColors";
 import type { ThemeColors } from "@/constants/Colors";
 import { useRouter } from "expo-router";
-import { AlertTriangle, ArrowLeft, ShieldCheck, Users } from "lucide-react-native";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  Minus,
+  ShieldCheck,
+  TrendingDown,
+  TrendingUp,
+  Users,
+} from "lucide-react-native";
 import React, { useMemo } from "react";
 import {
   ActivityIndicator,
@@ -47,6 +56,11 @@ export default function StudyAdminScreen() {
     isLoading: isAttritionLoading,
     error: attritionError,
   } = useGetAttritionReportQuery(undefined, { skip: !isAdmin });
+  const {
+    data: progress,
+    isLoading: isProgressLoading,
+    error: progressError,
+  } = useGetParticipantProgressQuery(undefined, { skip: !isAdmin });
 
   if (!isAdmin) {
     return (
@@ -64,6 +78,7 @@ export default function StudyAdminScreen() {
   const summaryData = summary?.data;
   const attritionRows = attrition?.data ?? [];
   const atRiskCount = attritionRows.filter((row) => row.at_risk).length;
+  const progressRows = progress?.data ?? [];
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
@@ -198,7 +213,142 @@ export default function StudyAdminScreen() {
             </>
           )}
         </View>
+
+        <View style={styles.card}>
+          <View style={styles.cardTitleRow}>
+            <TrendingUp size={16} color={colors.textPrimary} />
+            <Text style={styles.cardTitle}>Progress</Text>
+          </View>
+
+          {isProgressLoading ? (
+            <ActivityIndicator color={colors.ink} />
+          ) : progressError ? (
+            <Text style={styles.errorText}>Couldn&apos;t load progress data.</Text>
+          ) : progressRows.length === 0 ? (
+            <Text style={styles.bodyText}>No enrolled participants yet.</Text>
+          ) : (
+            <>
+              <Text style={styles.bodyText}>
+                Baseline (pretest) vs. current rolling-average accuracy
+                (window of {progress?.rolling_window_n}).
+              </Text>
+
+              {progressRows.map((row) => (
+                <View key={row.user_id} style={styles.participantRow}>
+                  <View style={styles.participantHeaderRow}>
+                    <Text style={styles.participantName} numberOfLines={1}>
+                      {row.name}
+                    </Text>
+                  </View>
+                  <Text style={styles.participantEmail} numberOfLines={1}>
+                    {row.email}
+                  </Text>
+
+                  {!row.baseline_completed ? (
+                    <Text style={styles.participantMeta}>
+                      Baseline not completed yet.
+                    </Text>
+                  ) : (
+                    <>
+                      <ProgressMetric
+                        label="Pitch accuracy"
+                        baselineLabel={
+                          row.pitch.baseline_cents !== null
+                            ? `${row.pitch.baseline_cents}c`
+                            : "-"
+                        }
+                        currentLabel={
+                          row.pitch.current_cents !== null
+                            ? `${row.pitch.current_cents}c`
+                            : "no practice yet"
+                        }
+                        improvement={row.pitch.improvement_pct}
+                        improvementSuffix="%"
+                        colors={colors}
+                        styles={styles}
+                      />
+                      <ProgressMetric
+                        label="Transcription"
+                        baselineLabel={
+                          row.transcription.baseline_pct !== null
+                            ? `${row.transcription.baseline_pct}%`
+                            : "-"
+                        }
+                        currentLabel={
+                          row.transcription.current_pct !== null
+                            ? `${row.transcription.current_pct}%`
+                            : "no attempts yet"
+                        }
+                        improvement={row.transcription.improvement_pts}
+                        improvementSuffix=" pts"
+                        colors={colors}
+                        styles={styles}
+                      />
+                    </>
+                  )}
+                </View>
+              ))}
+            </>
+          )}
+        </View>
       </ScrollView>
+    </View>
+  );
+}
+
+// A single baseline -> current accuracy comparison line within a
+// participant's Progress card row. Shared between the pitch and
+// transcription metrics, which differ only in labels/units.
+function ProgressMetric({
+  label,
+  baselineLabel,
+  currentLabel,
+  improvement,
+  improvementSuffix,
+  colors,
+  styles,
+}: {
+  label: string;
+  baselineLabel: string;
+  currentLabel: string;
+  improvement: number | null;
+  improvementSuffix: string;
+  colors: ThemeColors;
+  styles: ReturnType<typeof createStyles>;
+}) {
+  const DeltaIcon =
+    improvement === null || Math.abs(improvement) < 0.1
+      ? Minus
+      : improvement > 0
+        ? TrendingUp
+        : TrendingDown;
+  const deltaColor =
+    improvement === null
+      ? colors.textMuted
+      : improvement > 0.1
+        ? colors.success
+        : improvement < -0.1
+          ? colors.danger
+          : colors.textMuted;
+
+  return (
+    <View style={styles.metricRow}>
+      <Text style={styles.metricLabel}>{label}</Text>
+      <View style={styles.metricValueRow}>
+        <Text style={styles.metricValueText} numberOfLines={1}>
+          {baselineLabel} {"→"} {currentLabel}
+        </Text>
+        {improvement !== null && (
+          <View style={styles.metricDelta}>
+            <DeltaIcon size={12} color={deltaColor} />
+            <Text style={[styles.metricDeltaText, { color: deltaColor }]}>
+              {improvement > 0 ? "+" : ""}
+              {improvement}
+              {improvementSuffix}
+            </Text>
+          </View>
+        )}
+      </View>
     </View>
   );
 }
@@ -401,5 +551,37 @@ const createStyles = (colors: ThemeColors) =>
       fontSize: 10,
       fontWeight: "700",
       color: colors.onInk,
+    },
+    metricRow: {
+      marginTop: 8,
+    },
+    metricLabel: {
+      fontSize: 11,
+      fontWeight: "700",
+      color: colors.textMuted,
+      textTransform: "uppercase",
+      letterSpacing: 0.4,
+      marginBottom: 2,
+    },
+    metricValueRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 8,
+    },
+    metricValueText: {
+      flex: 1,
+      fontSize: 13,
+      fontWeight: "600",
+      color: colors.textPrimary,
+    },
+    metricDelta: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 3,
+    },
+    metricDeltaText: {
+      fontSize: 12,
+      fontWeight: "700",
     },
   });
