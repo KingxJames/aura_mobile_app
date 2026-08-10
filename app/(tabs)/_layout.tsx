@@ -218,16 +218,10 @@ export default function TabLayout() {
         <Tabs.Screen
           name="grades"
           options={{
-            title: "Grades",
-            tabBarLabel: "Grades",
-            tabBarIcon: ({ color }) => (
-              <PlatformIcon
-                ios="graduationcap.fill"
-                name="school"
-                color={color}
-                size={tabIconSize}
-              />
-            ),
+            // Hidden from the tab bar. Route/file stays intact and
+            // reachable (profile/settings/study-consent/study-admin still
+            // redirect here), easily restorable by removing href: null.
+            href: null,
           }}
         />
 

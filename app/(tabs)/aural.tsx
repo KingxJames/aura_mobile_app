@@ -1,3 +1,4 @@
+import NextSessionTimer from "@/components/aural/nextSessionTimer";
 import { useThemeColors } from "@/hooks/useThemeColors";
 import type { ThemeColors } from "@/constants/Colors";
 import { useRouter } from "expo-router";
@@ -29,6 +30,8 @@ export default function AuralScreen() {
             Sharpen your pitch by ear, one note at a time.
           </Text>
         </View>
+
+        <NextSessionTimer />
 
         <Pressable
           onPress={() => router.push("/aural-practice")}
