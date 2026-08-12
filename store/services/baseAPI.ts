@@ -1,4 +1,5 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { clearAuth } from "../features/authSlice";
 import { API_BASE_URL } from "./config/api";
 
 type RootStateLike = {
@@ -36,7 +37,24 @@ const basequeryWithReauth = async (args: any, api: any, extraOptions: any) => {
     }
   }
 
-  return await baseQuery(args, api, extraOptions);
+  const result = await baseQuery(args, api, extraOptions);
+
+  // A 401 on a request we sent WITH a token means that token has been
+  // invalidated server-side (e.g. the backend deletes all of a user's
+  // other tokens on each new login - signing in on a second device kills
+  // the first device's session). Without this, the dead token just sits
+  // in storage and every request fails silently until the user manually
+  // logs out and back in. Only act when we actually had a token, so this
+  // doesn't fire on plain "wrong password" 401s from the login screen.
+  if (result.error?.status === 401) {
+    const state = api.getState() as RootStateLike;
+    if (state?.auth?.accessToken) {
+      api.dispatch(clearAuth());
+      api.dispatch(baseAPI.util.resetApiState());
+    }
+  }
+
+  return result;
 };
 
 export const baseAPI = createApi({
